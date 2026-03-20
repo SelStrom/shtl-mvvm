@@ -27,5 +27,11 @@ namespace Shtl.Mvvm
             _value = initial;
             OnChanged = null;
         }
+
+        public ObservableValue()
+        {
+            _value = default;
+            OnChanged = null;
+        }
     }
 }
