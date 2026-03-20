@@ -4,7 +4,7 @@
   "displayName": "shtl-mvvm",
   "description": "Mvvm framework for Unity with clean view model",
   "unity": "2020.3",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "keywords": [
     "mvvm"
   ],
