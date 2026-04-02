@@ -4,12 +4,12 @@
   "displayName": "shtl-mvvm",
   "description": "Mvvm framework for Unity with clean view model",
   "unity": "2020.3",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "keywords": [
     "mvvm"
   ],
   "dependencies": {
-    "com.unity.textmeshpro": "3.0.7",
+    "com.unity.ugui": "1.0.0",
     "com.unity.nuget.newtonsoft-json": "3.2.2"
   },
   "repository": {

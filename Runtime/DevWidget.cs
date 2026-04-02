@@ -35,7 +35,11 @@ namespace Shtl.Mvvm
                 return;
             }
 
+#if UNITY_2023_1_OR_NEWER
+            var widgets = FindObjectsByType<DevWidget>(FindObjectsSortMode.None);
+#else
             var widgets = FindObjectsOfType<DevWidget>();
+#endif
             foreach (var widget in widgets)
             {
                 widget.ClosePrefab();
