@@ -5,7 +5,7 @@ milestone_name: milestone
 status: ready_to_plan
 stopped_at: Phase 1 context gathered
 last_updated: "2026-05-01T00:46:12.355Z"
-last_activity: 2026-05-01 -- Phase 01 execution started
+last_activity: 2026-05-01 -- Completed quick task 260501-rr8: ViewModelViewerWindow поддержка ReactiveVirtualList
 progress:
   total_phases: 2
   completed_phases: 1
@@ -82,6 +82,7 @@ None yet.
 | 260427-r28 | VirtualScroll — поддержка обоих направлений (Vertical/Horizontal) + полное скрытие скроллбара | 2026-04-27 | f932333 | [260427-r28-1-virtualscrollrect-layoutcalculator-2-t](./quick/260427-r28-1-virtualscrollrect-layoutcalculator-2-t/) |
 | 260429-q47 | VirtualScrollRect — настройка spacing (gap между элементами) | 2026-04-29 | cb987fe | [260429-q47-virtualscrollrect-serializefield-spacing](./quick/260429-q47-virtualscrollrect-serializefield-spacing/) |
 | 260430-1ar | Code-review фиксы Phase 1: B-1..B-5, B-7 в VirtualCollectionBinding + regression tests | 2026-04-30 | 4ec8fa3 | [260430-1ar-code-review-fixes-phase-1-virtual-list-b](./quick/260430-1ar-code-review-fixes-phase-1-virtual-list-b/) |
+| 260501-rr8 | В ViewModelViewerWindow добавить поддержку ReactiveVirtualList | 2026-05-01 | 3e82208 | [260501-rr8-viewmodelviewerwindow-reactivevirtuallis](./quick/260501-rr8-viewmodelviewerwindow-reactivevirtuallis/) |
 
 ## Session Continuity
 
