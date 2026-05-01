@@ -9,17 +9,17 @@ Requirements for v1.2 release. Each maps to roadmap phases.
 
 ### Виртуализированный список
 
-- [ ] **VLIST-01**: Виртуализированный список рендерит только видимые элементы + overscan-буфер
-- [ ] **VLIST-02**: Элементы переиспользуются через recycling pool при скролле
-- [ ] **VLIST-03**: Поддержка вертикальной прокрутки
-- [ ] **VLIST-04**: Поддержка элементов переменной высоты/ширины
-- [ ] **VLIST-05**: Виртуализированный список интегрируется с ReactiveList<T> через существующие события add/replace/remove
-- [ ] **VLIST-06**: Виртуализированный список корректно работает с IWidgetViewFactory для создания/удаления View элементов
-- [ ] **VLIST-07**: Zero-alloc в hot path скролла (без аллокаций в каждом кадре)
+- [x] **VLIST-01**: Виртуализированный список рендерит только видимые элементы + overscan-буфер
+- [x] **VLIST-02**: Элементы переиспользуются через recycling pool при скролле
+- [x] **VLIST-03**: Поддержка вертикальной прокрутки
+- [x] **VLIST-04**: Поддержка элементов переменной высоты/ширины
+- [x] **VLIST-05**: Виртуализированный список интегрируется с ReactiveList<T> через существующие события add/replace/remove
+- [x] **VLIST-06**: Виртуализированный список корректно работает с IWidgetViewFactory для создания/удаления View элементов
+- [x] **VLIST-07**: Zero-alloc в hot path скролла (без аллокаций в каждом кадре)
 
 ### Тестирование
 
-- [ ] **TEST-04**: Unit-тесты для виртуализированного списка (recycling, viewport culling, переменные размеры)
+- [x] **TEST-04**: Unit-тесты для виртуализированного списка (recycling, viewport culling, переменные размеры)
 
 ### Samples
 
@@ -81,14 +81,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VLIST-01 | Phase 1 | Pending |
-| VLIST-02 | Phase 1 | Pending |
-| VLIST-03 | Phase 1 | Pending |
-| VLIST-04 | Phase 1 | Pending |
-| VLIST-05 | Phase 1 | Pending |
-| VLIST-06 | Phase 1 | Pending |
-| VLIST-07 | Phase 1 | Pending |
-| TEST-04 | Phase 1 | Pending |
+| VLIST-01 | Phase 1 | Complete |
+| VLIST-02 | Phase 1 | Complete |
+| VLIST-03 | Phase 1 | Complete |
+| VLIST-04 | Phase 1 | Complete |
+| VLIST-05 | Phase 1 | Complete |
+| VLIST-06 | Phase 1 | Complete |
+| VLIST-07 | Phase 1 | Complete |
+| TEST-04 | Phase 1 | Complete |
 | SMPL-02 | Phase 2 | Pending |
 | SMPL-03 | Phase 2 | Pending |
 

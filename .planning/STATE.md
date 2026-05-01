@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: milestone
-status: planning
+status: ready_to_plan
 stopped_at: Phase 1 context gathered
-last_updated: "2026-04-09T18:21:40.782Z"
-last_activity: "2026-04-09 -- Roadmap пересмотрен: фокус только на виртуализацию"
+last_updated: "2026-05-01T00:46:12.355Z"
+last_activity: 2026-05-01 -- Phase 01 execution started
 progress:
   total_phases: 2
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 6
+  completed_plans: 3
+  percent: 50
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Простой и предсказуемый fluent API биндингов (Bind.From().To()), который позволяет декларативно связывать данные с UI без бойлерплейта.
-**Current focus:** Phase 1 -- Виртуализированный список
+**Current focus:** Phase 01 — virtualized-list
 
 ## Current Position
 
-Phase: 1 of 2 (Виртуализированный список)
-Plan: 0 of 0 in current phase
+Phase: 2
+Plan: Not started
 Status: Ready to plan
-Last activity: 2026-04-09 -- Roadmap пересмотрен: фокус только на виртуализацию
+Last activity: 2026-05-01
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -36,7 +36,7 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 6
 - Average duration: --
 - Total execution time: 0 hours
 
@@ -44,7 +44,7 @@ Progress: [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 1 | 6 | - | - |
 
 **Recent Trend:**
 
@@ -70,6 +70,18 @@ None yet.
 ### Blockers/Concerns
 
 - Phase 1: ReactiveList single-subscriber ограничение для виртуализированного списка
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260421-t2q | Скрыть публичное API VirtualScrollRect за internal | 2026-04-21 | f9ca93d | [260421-t2q-virtualscrollrect-api-viewmodel](./quick/260421-t2q-virtualscrollrect-api-viewmodel/) |
+| fast-260424 | Инверсия Scrollbar в VirtualScrollRect по Scrollbar.direction | 2026-04-24 | 2adb288 | — |
+| fast-260424b | Виртуальные view-префабы как дети Viewport вместо Scroll View | 2026-04-24 | 3bc0f67 | — |
+| fast-260425 | Автоскрытие Scrollbar когда контент помещается во Viewport | 2026-04-25 | 5c5695c | — |
+| 260427-r28 | VirtualScroll — поддержка обоих направлений (Vertical/Horizontal) + полное скрытие скроллбара | 2026-04-27 | f932333 | [260427-r28-1-virtualscrollrect-layoutcalculator-2-t](./quick/260427-r28-1-virtualscrollrect-layoutcalculator-2-t/) |
+| 260429-q47 | VirtualScrollRect — настройка spacing (gap между элементами) | 2026-04-29 | cb987fe | [260429-q47-virtualscrollrect-serializefield-spacing](./quick/260429-q47-virtualscrollrect-serializefield-spacing/) |
+| 260430-1ar | Code-review фиксы Phase 1: B-1..B-5, B-7 в VirtualCollectionBinding + regression tests | 2026-04-30 | 4ec8fa3 | [260430-1ar-code-review-fixes-phase-1-virtual-list-b](./quick/260430-1ar-code-review-fixes-phase-1-virtual-list-b/) |
 
 ## Session Continuity
 
