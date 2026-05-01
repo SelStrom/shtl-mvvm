@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Shtl.Mvvm.Samples
@@ -22,6 +23,13 @@ namespace Shtl.Mvvm.Samples
         public ChatMessagesViewModel(float fixedHeight)
         {
             Messages = new ReactiveVirtualList<ChatMessageViewModel>(fixedHeight);
+        }
+
+        // Variable-height mode: each item's height is resolved per-index via the provider.
+        // Provider must be stable (same index -> same height across calls) — see ReactiveVirtualList.
+        public ChatMessagesViewModel(Func<int, float> heightProvider)
+        {
+            Messages = new ReactiveVirtualList<ChatMessageViewModel>(heightProvider);
         }
     }
 
