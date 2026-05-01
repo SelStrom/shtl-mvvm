@@ -25,7 +25,7 @@ namespace Shtl.Mvvm.Samples
         }
     }
 
-    public class ChatMessagesView : AbstractWidgetView<ChatMessagesViewModel>
+    public class ChatMessagesWidgetView : AbstractWidgetView<ChatMessagesViewModel>
     {
         [SerializeField] private VirtualScrollRect _scrollRect;
         [SerializeField] private ChatMessageView _messagePrefab;

@@ -4,9 +4,9 @@ namespace Shtl.Mvvm.Samples
 {
     public class VirtualListEntryScreen : MonoBehaviour
     {
-        [SerializeField] private ChatView _chatView;
-        [SerializeField] private ChatMessagesView _verticalWidgetView;
-        [SerializeField] private ChatMessagesView _horizontalWidgetView;
+        [SerializeField] private ChatWidgetView _chatView;
+        [SerializeField] private ChatMessagesWidgetView _verticalWidgetView;
+        [SerializeField] private ChatMessagesWidgetView _horizontalWidgetView;
 
         private ChatModel _model;
         private ChatViewModel _chatViewModel;

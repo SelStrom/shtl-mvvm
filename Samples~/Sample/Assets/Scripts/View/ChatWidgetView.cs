@@ -12,7 +12,7 @@ namespace Shtl.Mvvm.Samples
         public readonly ReactiveValue<string> MessageCount = new();
     }
 
-    public class ChatView : AbstractWidgetView<ChatViewModel>
+    public class ChatWidgetView : AbstractWidgetView<ChatViewModel>
     {
         [SerializeField] private Button _addMessageButton;
         [SerializeField] private Button _addBatchButton;
