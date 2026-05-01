@@ -72,8 +72,10 @@ namespace Shtl.Mvvm
         {
             var count = list.Count;
             RebuildLayout(count);
-            _scrollRect.SetContentSize(_layoutCalculator.TotalHeight);
-            UpdateVisibleRange();
+            // S2: silent state mutation followed by a single notify so UpdateVisibleRange
+            // runs exactly once via the OnScrollPositionChanged callback.
+            _scrollRect.SetContentSizeWithoutNotify(_layoutCalculator.TotalHeight);
+            _scrollRect.NotifyScrollChanged();
         }
 
         private void OnElementAdded(int index, TViewModel element)
@@ -105,24 +107,26 @@ namespace Shtl.Mvvm
                 _fixedItemHeight = 0f;
             }
 
-            // Shift indices in _activeViews BEFORE SetContentSize/ScrollPosition: both trigger
-            // OnScrollPositionChanged → UpdateVisibleRange, and if _activeViews still holds the
-            // old keys, the View falls into "out-of-range" and is Released, then handed out from
-            // the pool again when the new active range is created -- this leads to a duplicate
-            // OnDisposed (double-dispose).
+            // Shift indices in _activeViews BEFORE the silent state mutations below: the
+            // single NotifyScrollChanged at the end will trigger one UpdateVisibleRange,
+            // and _activeViews must already hold the up-to-date keys at that point —
+            // otherwise stale entries are released and the same view is later handed out
+            // from the pool, producing a duplicate OnDisposed (double-dispose).
             ShiftActiveViewIndices(index, 1);
 
-            _scrollRect.SetContentSize(_layoutCalculator.TotalHeight);
+            // S2: silent state changes — content size + optional scroll-position correction
+            // when inserting above the viewport (stride = height + spacing, see the
+            // prefix-sum invariant in LayoutCalculator). A single NotifyScrollChanged at
+            // the end runs UpdateVisibleRange exactly once.
+            _scrollRect.SetContentSizeWithoutNotify(_layoutCalculator.TotalHeight);
 
-            // Adjust scroll position when inserting above the viewport.
-            // stride = height + spacing (see the prefix-sum invariant in LayoutCalculator):
-            // every element to the right of index shifts by exactly this delta.
             if (index < _currentRange.FirstIndex)
             {
-                _scrollRect.ScrollPosition += newHeight + _scrollRect.Spacing;
+                _scrollRect.SetScrollPositionWithoutNotify(
+                    _scrollRect.ScrollPosition + newHeight + _scrollRect.Spacing);
             }
 
-            UpdateVisibleRange();
+            _scrollRect.NotifyScrollChanged();
         }
 
         private void OnElementRemoved(int index, TViewModel element)
@@ -149,20 +153,21 @@ namespace Shtl.Mvvm
                 _layoutCalculator.RemoveAt(index, count, GetHeightProvider());
             }
 
-            // Shift indices in _activeViews BEFORE SetContentSize/ScrollPosition (see OnElementAdded
-            // above for the rationale).
+            // Shift indices in _activeViews BEFORE the silent state mutations below
+            // (see OnElementAdded for the rationale).
             ShiftActiveViewIndices(index + 1, -1);
 
-            _scrollRect.SetContentSize(_layoutCalculator.TotalHeight);
+            // S2: silent state changes — mirror OnElementAdded with a sign flip
+            // (stride = height + spacing). Single NotifyScrollChanged at the end.
+            _scrollRect.SetContentSizeWithoutNotify(_layoutCalculator.TotalHeight);
 
-            // Adjust scroll position when removing above the viewport.
-            // Mirroring OnElementAdded: stride = height + spacing.
             if (index < _currentRange.FirstIndex)
             {
-                _scrollRect.ScrollPosition -= heightOfRemoved + _scrollRect.Spacing;
+                _scrollRect.SetScrollPositionWithoutNotify(
+                    _scrollRect.ScrollPosition - heightOfRemoved - _scrollRect.Spacing);
             }
 
-            UpdateVisibleRange();
+            _scrollRect.NotifyScrollChanged();
         }
 
         private void OnElementReplaced(int index, TViewModel element)
@@ -189,8 +194,9 @@ namespace Shtl.Mvvm
                 _fixedItemHeight = 0f;
             }
 
-            _scrollRect.SetContentSize(_layoutCalculator.TotalHeight);
-            UpdateVisibleRange();
+            // S2: silent state change + single NotifyScrollChanged at the end.
+            _scrollRect.SetContentSizeWithoutNotify(_layoutCalculator.TotalHeight);
+            _scrollRect.NotifyScrollChanged();
         }
 
         private void OnScrollPositionChanged(float scrollPosition)

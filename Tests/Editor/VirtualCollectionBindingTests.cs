@@ -355,6 +355,44 @@ namespace Shtl.Mvvm.Tests
         }
 
         [Test]
+        public void OnElementAdded_AboveViewport_DoesNotChurnViews()
+        {
+            // S2 regression: before the fix, OnElementAdded with index < FirstIndex
+            // ran UpdateVisibleRange twice -- once via the SetContentSize callback
+            // and once via the ScrollPosition setter callback. The scroll position
+            // was already shifted between the two invocations, so the first pass
+            // saw one visible range while the second saw a different one. On the
+            // viewport boundary this produced a release+create churn for at least
+            // one view. After S2 -- a single consistent UpdateVisibleRange, no churn.
+            var binding = VirtualCollectionBinding<TestViewModel, TestWidgetView>.GetOrCreate()
+                .Connect(_vmList, _factory, _scrollRect);
+            binding.Activate();
+
+            for (var i = 0; i < 10; i++)
+            {
+                _vmList.Add(new TestViewModel());
+            }
+            _scrollRect.ScrollPosition = 400f;
+
+            var createBefore = _factory.CreateCount;
+            var removeBefore = _factory.RemoveCount;
+
+            // Insert above the viewport: scroll position shifts by exactly one
+            // stride, so the visible content stays the same. No view churn expected.
+            _vmList.Items.Insert(0, new TestViewModel());
+
+            var createDelta = _factory.CreateCount - createBefore;
+            var removeDelta = _factory.RemoveCount - removeBefore;
+
+            Assert.LessOrEqual(createDelta, 1,
+                "S2 regression: insert above viewport must not churn views — at most one new view if the visible range grew by one.");
+            Assert.LessOrEqual(removeDelta, 0,
+                "S2 regression: insert above viewport must not release any views.");
+
+            binding.Dispose();
+        }
+
+        [Test]
         public void OnContentChanged_HorizontalAxis_RebuildLayoutAndCreatesViews()
         {
             // Horizontal axis: viewport width = 300, items 100 wide -> 3 visible + overscan.

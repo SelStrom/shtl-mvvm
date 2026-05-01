@@ -119,6 +119,37 @@ namespace Shtl.Mvvm
             OnScrollPositionChanged();
         }
 
+        // Raw mutation without dispatching the scroll-changed callback. Used by
+        // VirtualCollectionBinding to batch a structural mutation (content size +
+        // scroll-position correction) and fire a single notify at the end via
+        // NotifyScrollChanged() instead of cascading multiple UpdateVisibleRange
+        // invocations through every state setter.
+        internal void SetContentSizeWithoutNotify(float size)
+        {
+            _contentHeight = size;
+            var maxScroll = MaxScrollPosition();
+            if (_scrollPosition > maxScroll || _scrollPosition < 0f)
+            {
+                _velocity = 0f;
+            }
+
+            ClampScrollPosition();
+        }
+
+        internal void SetScrollPositionWithoutNotify(float value)
+        {
+            _scrollPosition = value;
+            ClampScrollPosition();
+        }
+
+        // Single dispatch point after a batch of WithoutNotify mutations. Reuses
+        // the existing OnScrollPositionChanged path so scrollbar refresh and the
+        // consumer callback stay consistent with normal user-driven scroll events.
+        internal void NotifyScrollChanged()
+        {
+            OnScrollPositionChanged();
+        }
+
         internal void ScrollTo(float position)
         {
             _velocity = 0f;
