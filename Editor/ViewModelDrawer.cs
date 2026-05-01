@@ -97,6 +97,11 @@ namespace Shtl.Mvvm.Editor
                 return BuildEnumerable(field, fieldValue as IEnumerable, ((IReactiveListCount)fieldValue).Count);
             }
 
+            if (IsGenericTypeOf(field.FieldType, typeof(ReactiveVirtualList<>)))
+            {
+                return BuildReactiveVirtualList(field, fieldValue);
+            }
+
             if (field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == typeof(List<>))
             {
                 var collection = fieldValue as ICollection;
@@ -115,6 +120,53 @@ namespace Shtl.Mvvm.Editor
             }
 
             return new Label($"{field.Name}: Type '{field.FieldType.Name}' is not supported");
+        }
+
+        private VisualElement BuildReactiveVirtualList(FieldInfo field, object fieldValue)
+        {
+            var itemsField = field.FieldType.GetField("Items");
+            var items = itemsField!.GetValue(fieldValue);
+            var count = ((IReactiveListCount)items).Count;
+
+            _objectToFoldoutStatus.TryGetValue(fieldValue, out var isExpanded);
+            var foldout = new Foldout
+            {
+                text = FormatLabel($"{field.Name} [{count}]", field.FieldType),
+                value = isExpanded
+            };
+            foldout.RegisterValueChangedCallback(evt =>
+            {
+                if (evt.target == foldout)
+                {
+                    _objectToFoldoutStatus[fieldValue] = evt.newValue;
+                }
+            });
+
+            // Items list — reuse existing enumerable rendering
+            var itemsFoldoutElement = BuildEnumerable(itemsField, items as IEnumerable, count);
+            foldout.Add(itemsFoldoutElement);
+
+            // Scalar virtual-scroll state fields
+            var scrollPositionField = field.FieldType.GetField("ScrollPosition");
+            var firstVisibleIndexField = field.FieldType.GetField("FirstVisibleIndex");
+            var visibleCountField = field.FieldType.GetField("VisibleCount");
+
+            foldout.Add(BuildReactiveValue(
+                "ScrollPosition",
+                typeof(float),
+                scrollPositionField!.GetValue(fieldValue)));
+
+            foldout.Add(BuildReactiveValue(
+                "FirstVisibleIndex",
+                typeof(int),
+                firstVisibleIndexField!.GetValue(fieldValue)));
+
+            foldout.Add(BuildReactiveValue(
+                "VisibleCount",
+                typeof(int),
+                visibleCountField!.GetValue(fieldValue)));
+
+            return foldout;
         }
 
         private VisualElement BuildEnumerable(FieldInfo field, IEnumerable elements, int size)

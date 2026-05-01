@@ -1,0 +1,300 @@
+using System;
+using System.Runtime.CompilerServices;
+
+namespace Shtl.Mvvm
+{
+    internal readonly struct VisibleRange
+    {
+        public readonly int FirstIndex;
+        public readonly int LastIndex;
+        public readonly int Count;
+
+        public VisibleRange(int firstIndex, int lastIndex, int count)
+        {
+            FirstIndex = firstIndex;
+            LastIndex = lastIndex;
+            Count = count;
+        }
+    }
+
+    internal struct LayoutCalculator
+    {
+        private float[] _prefixHeights;
+        private int _itemCount;
+        private float _fixedHeight;
+        private float _spacing;
+
+        // Prefix sum semantics:
+        //   _prefixHeights[i] = offset of item i = sum_(k<i)(s_k) + i * _spacing
+        //   _prefixHeights[i+1] - _prefixHeights[i] = s_i + _spacing (one stride, item + trailing gap).
+        //   TotalHeight excludes trailing spacing after the last item: prefix[N] - _spacing.
+        // With _spacing=0f the recurrence degenerates into a classic prefix sum over sizes.
+
+        public float TotalHeight
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                if (_itemCount == 0)
+                {
+                    return 0f;
+                }
+
+                if (_fixedHeight > 0f)
+                {
+                    return _itemCount * _fixedHeight + (_itemCount - 1) * _spacing;
+                }
+
+                return _prefixHeights != null ? _prefixHeights[_itemCount] - _spacing : 0f;
+            }
+        }
+
+        public void SetSpacing(float spacing)
+        {
+            _spacing = spacing;
+        }
+
+        public void Rebuild(int itemCount, float fixedHeight)
+        {
+            _itemCount = itemCount;
+            _fixedHeight = fixedHeight;
+
+            if (itemCount == 0)
+            {
+                return;
+            }
+
+            EnsureCapacity(itemCount);
+
+            _prefixHeights[0] = 0f;
+            for (var i = 0; i < itemCount; i++)
+            {
+                _prefixHeights[i + 1] = _prefixHeights[i] + fixedHeight + _spacing;
+            }
+        }
+
+        public void Rebuild(int itemCount, Func<int, float> heightProvider)
+        {
+            _itemCount = itemCount;
+            _fixedHeight = 0f;
+
+            if (itemCount == 0)
+            {
+                return;
+            }
+
+            EnsureCapacity(itemCount);
+
+            _prefixHeights[0] = 0f;
+            for (var i = 0; i < itemCount; i++)
+            {
+                _prefixHeights[i + 1] = _prefixHeights[i] + heightProvider(i) + _spacing;
+            }
+        }
+
+        public void InsertAt(int index, int newItemCount, Func<int, float> heightProvider)
+        {
+            _itemCount = newItemCount;
+            _fixedHeight = 0f;
+
+            EnsureCapacity(newItemCount);
+
+            // Recompute prefix sum starting from index. prefix[index] stays valid
+            // (the offset of item index does not depend on items to its right).
+            for (var i = index; i < newItemCount; i++)
+            {
+                _prefixHeights[i + 1] = _prefixHeights[i] + heightProvider(i) + _spacing;
+            }
+        }
+
+        public void RemoveAt(int index, int newItemCount, Func<int, float> heightProvider)
+        {
+            _itemCount = newItemCount;
+            _fixedHeight = 0f;
+
+            // Recompute prefix sum starting from index (see InsertAt comment for rationale).
+            for (var i = index; i < newItemCount; i++)
+            {
+                _prefixHeights[i + 1] = _prefixHeights[i] + heightProvider(i) + _spacing;
+            }
+        }
+
+        // Incrementally recomputes the prefix-sum tail when the height of item index changes
+        // (e.g. on Replace). The prefix [0..index] stays valid and is not recomputed.
+        public void UpdateAt(int index, int itemCount, Func<int, float> heightProvider)
+        {
+            _itemCount = itemCount;
+            _fixedHeight = 0f;
+
+            EnsureCapacity(itemCount);
+
+            for (var i = index; i < itemCount; i++)
+            {
+                _prefixHeights[i + 1] = _prefixHeights[i] + heightProvider(i) + _spacing;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float GetItemOffset(int index)
+        {
+            if (_fixedHeight > 0f)
+            {
+                return index * (_fixedHeight + _spacing);
+            }
+
+            if (_prefixHeights == null || index >= _prefixHeights.Length)
+            {
+                return 0f;
+            }
+
+            return _prefixHeights[index];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float GetItemHeight(int index)
+        {
+            if (_fixedHeight > 0f)
+            {
+                return _fixedHeight;
+            }
+
+            // prefix[i+1] - prefix[i] = s_i + spacing, so the raw size is the difference minus spacing.
+            return _prefixHeights[index + 1] - _prefixHeights[index] - _spacing;
+        }
+
+        public VisibleRange FindVisibleRange(float scrollPosition, float viewportHeight, int overscanCount)
+        {
+            if (_itemCount == 0)
+            {
+                return new VisibleRange(0, 0, 0);
+            }
+
+            var totalHeight = TotalHeight;
+
+            // Clamp scroll position
+            if (scrollPosition > totalHeight - viewportHeight)
+            {
+                scrollPosition = totalHeight - viewportHeight;
+            }
+
+            if (scrollPosition < 0f)
+            {
+                scrollPosition = 0f;
+            }
+
+            int firstVisible;
+            int lastVisible;
+
+            if (_fixedHeight > 0f)
+            {
+                // O(1) fast path for fixed height with spacing.
+                // Stride = fixedHeight + spacing; with spacing=0 behaviour is identical to the base case.
+                var stride = _fixedHeight + _spacing;
+                if (stride <= 0f)
+                {
+                    firstVisible = 0;
+                    lastVisible = _itemCount - 1;
+                }
+                else
+                {
+                    firstVisible = (int)(scrollPosition / stride);
+                    var endPos = scrollPosition + viewportHeight;
+                    lastVisible = (int)(endPos / stride);
+                    // Mirroring the binary-search branch: if an item starts exactly on the lower
+                    // viewport edge (endPos), it is not visible -- shift by -1.
+                    if (lastVisible * stride >= endPos)
+                    {
+                        lastVisible--;
+                    }
+                }
+            }
+            else
+            {
+                // Binary search for the first visible item.
+                firstVisible = BinarySearchFirstVisible(scrollPosition);
+
+                // Binary search for the last visible item.
+                // BinarySearchFirstVisible returns the first index whose prefix[i+1] > endPos,
+                // i.e. the item that crosses the lower edge. If prefix[i] == endPos, however,
+                // item i starts exactly on the boundary and is not visible -- shift by -1.
+                var endPos = scrollPosition + viewportHeight;
+                var lastBoundary = BinarySearchFirstVisible(endPos);
+                if (lastBoundary < _itemCount && _prefixHeights[lastBoundary] >= endPos)
+                {
+                    lastVisible = lastBoundary - 1;
+                }
+                else
+                {
+                    lastVisible = lastBoundary;
+                }
+            }
+
+            // Clamp to bounds.
+            if (firstVisible >= _itemCount)
+            {
+                firstVisible = _itemCount - 1;
+            }
+
+            if (lastVisible >= _itemCount)
+            {
+                lastVisible = _itemCount - 1;
+            }
+
+            // Apply overscan.
+            firstVisible -= overscanCount;
+            lastVisible += overscanCount;
+
+            // Clamp again after overscan.
+            if (firstVisible < 0)
+            {
+                firstVisible = 0;
+            }
+
+            if (lastVisible >= _itemCount)
+            {
+                lastVisible = _itemCount - 1;
+            }
+
+            var count = lastVisible - firstVisible + 1;
+
+            return new VisibleRange(firstVisible, lastVisible, count);
+        }
+
+        private int BinarySearchFirstVisible(float scrollPosition)
+        {
+            var lo = 0;
+            var hi = _itemCount;
+
+            while (lo < hi)
+            {
+                var mid = lo + (hi - lo) / 2;
+                if (_prefixHeights[mid + 1] <= scrollPosition)
+                {
+                    lo = mid + 1;
+                }
+                else
+                {
+                    hi = mid;
+                }
+            }
+
+            return lo;
+        }
+
+        private void EnsureCapacity(int itemCount)
+        {
+            var requiredLength = itemCount + 1;
+            if (_prefixHeights == null || _prefixHeights.Length < requiredLength)
+            {
+                // Allocate with headroom to reduce the number of resizes.
+                var newCapacity = Math.Max(requiredLength, (_prefixHeights?.Length ?? 0) * 2);
+                if (newCapacity < 16)
+                {
+                    newCapacity = 16;
+                }
+
+                Array.Resize(ref _prefixHeights, newCapacity);
+            }
+        }
+    }
+}

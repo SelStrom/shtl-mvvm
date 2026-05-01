@@ -19,11 +19,12 @@ namespace Shtl.Mvvm.Editor
 
         private const string GUI_GAME_OBJECT_NAME = "Gui";
 
-        private AbstractViewModel _selectedViewModel;
-        private AbstractViewModel _displayedViewModel;
+        private readonly HashSet<AbstractViewModel> _selectedViewModels = new();
+        private readonly Dictionary<AbstractViewModel, ViewModelDrawer> _drawerPerViewModel = new();
         private List<AbstractViewModel> _lastWidgets = new();
 
-        private readonly ViewModelDrawer _viewModelDrawer;
+        private bool _showUnsupportedFields;
+
         private static readonly Dictionary<Type, PropertyInfo> _typeToProperty = new();
 
         private VisualElement _selectorContainer;
@@ -34,11 +35,6 @@ namespace Shtl.Mvvm.Editor
         [MenuItem("Window/ViewModel Viewer")]
         public static void ShowWindow() => GetWindow<ViewModelViewerWindow>("ViewModel Viewer");
 
-        public ViewModelViewerWindow()
-        {
-            _viewModelDrawer = new ViewModelDrawer(false);
-        }
-
         private void CreateGUI()
         {
             var root = rootVisualElement;
@@ -46,7 +42,7 @@ namespace Shtl.Mvvm.Editor
             var toggle = new Toggle("Show unsupported fields");
             toggle.RegisterValueChangedCallback(evt =>
             {
-                _viewModelDrawer.ShowUnsupportedFields = evt.newValue;
+                _showUnsupportedFields = evt.newValue;
                 RebuildViewModelDisplay();
             });
             root.Add(toggle);
@@ -86,18 +82,21 @@ namespace Shtl.Mvvm.Editor
 
             UpdateSelector();
 
-            if (_selectedViewModel == null)
+            if (_selectedViewModels.Count == 0)
             {
                 return;
             }
 
-            if (_selectedViewModel != _displayedViewModel)
+            var needsRebuild = false;
+            foreach (var vm in _selectedViewModels)
             {
-                RebuildViewModelDisplay();
-                return;
+                if (_drawerPerViewModel.TryGetValue(vm, out var drawer) && drawer.UpdateValues())
+                {
+                    needsRebuild = true;
+                }
             }
 
-            if (_viewModelDrawer.UpdateValues())
+            if (needsRebuild)
             {
                 RebuildViewModelDisplay();
             }
@@ -119,45 +118,82 @@ namespace Shtl.Mvvm.Editor
         {
             _selectorContainer.Clear();
 
+            // Remove stale entries no longer present in scene
+            _selectedViewModels.RemoveWhere(vm => !widgets.Contains(vm));
+            foreach (var stale in _drawerPerViewModel.Keys.Where(vm => !widgets.Contains(vm)).ToList())
+            {
+                _drawerPerViewModel.Remove(stale);
+            }
+
             if (widgets.Count <= 0)
             {
-                _selectedViewModel = null;
+                RebuildViewModelDisplay();
                 return;
             }
 
             foreach (var widget in widgets)
             {
-                var isSelected = widget == _selectedViewModel;
+                var isSelected = _selectedViewModels.Contains(widget);
                 var capturedWidget = widget;
                 var widgetToggle = new Toggle(widget.GetType().Name) { value = isSelected };
                 widgetToggle.RegisterValueChangedCallback(evt =>
                 {
                     if (evt.newValue)
                     {
-                        _selectedViewModel = capturedWidget;
+                        _selectedViewModels.Add(capturedWidget);
                     }
+                    else
+                    {
+                        _selectedViewModels.Remove(capturedWidget);
+                        _drawerPerViewModel.Remove(capturedWidget);
+                    }
+                    RebuildViewModelDisplay();
                 });
                 _selectorContainer.Add(widgetToggle);
             }
 
             if (widgets.Count == 1)
             {
-                _selectedViewModel = widgets.First();
+                _selectedViewModels.Add(widgets[0]);
+                RebuildViewModelDisplay();
             }
         }
 
         private void RebuildViewModelDisplay()
         {
+            // Only the UI tree is cleared. Drawer instances are kept alive across rebuilds
+            // so that their internal foldout-state dictionaries survive structural changes
+            // (e.g. ReactiveList Count changes, "Show unsupported fields" toggle, selector edits).
             _viewModelContainer.Clear();
-            _displayedViewModel = _selectedViewModel;
 
-            if (_selectedViewModel == null)
+            // Drop drawers for view models that are no longer selected. Re-selecting a view model
+            // later will create a fresh drawer with collapsed foldouts, which is the intended reset.
+            foreach (var stale in _drawerPerViewModel.Keys.Where(vm => !_selectedViewModels.Contains(vm)).ToList())
+            {
+                _drawerPerViewModel.Remove(stale);
+            }
+
+            if (_selectedViewModels.Count == 0)
             {
                 _viewModelContainer.Add(new HelpBox("No active view models found", HelpBoxMessageType.Info));
                 return;
             }
 
-            _viewModelContainer.Add(_viewModelDrawer.BuildViewModelElement(_selectedViewModel.GetType(), _selectedViewModel));
+            foreach (var vm in _selectedViewModels)
+            {
+                if (!_drawerPerViewModel.TryGetValue(vm, out var drawer))
+                {
+                    drawer = new ViewModelDrawer(false);
+                    _drawerPerViewModel[vm] = drawer;
+                }
+
+                // Refresh the toggle on every rebuild so existing drawers pick up the latest value.
+                drawer.ShowUnsupportedFields = _showUnsupportedFields;
+
+                // BuildViewModelElement rebuilds the UI tree and re-reads foldout state from the
+                // drawer's _objectToFoldoutStatus, so previously expanded nodes stay expanded.
+                _viewModelContainer.Add(drawer.BuildViewModelElement(vm.GetType(), vm));
+            }
         }
 
         private List<AbstractViewModel> CollectActiveViewModels()

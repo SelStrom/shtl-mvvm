@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "com.unity.test-framework": "1.1.33",
+    "com.unity.textmeshpro": "3.0.7",
+    "com.unity.ugui": "1.0.0",
+    "com.unity.nuget.newtonsoft-json": "3.2.2",
+    "com.unity.modules.imgui": "1.0.0",
+    "com.unity.modules.ui": "1.0.0",
+    "com.unity.modules.uielements": "1.0.0",
+    "com.shtl.mvvm": "file:../../"
+  },
+  "testables": [
+    "com.shtl.mvvm"
+  ]
+}
