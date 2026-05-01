@@ -86,8 +86,8 @@ namespace Shtl.Mvvm.Tests
             var calc = new LayoutCalculator();
             calc.Rebuild(10, 100f);
 
-            // scrollPos=150 => первый видимый idx=1 (offset 100, частично видим)
-            // viewport=250 => scrollPos+viewport=400 => последний видимый idx=3 (offset 300, конец 400)
+            // scrollPos=150 => first visible idx=1 (offset 100, partially visible)
+            // viewport=250 => scrollPos+viewport=400 => last visible idx=3 (offset 300, ends at 400)
             var range = calc.FindVisibleRange(150f, 250f, 0);
 
             Assert.AreEqual(1, range.FirstIndex);
@@ -100,8 +100,8 @@ namespace Shtl.Mvvm.Tests
             var calc = new LayoutCalculator();
             calc.Rebuild(20, 100f);
 
-            // Без overscan: scrollPos=500, viewport=300 => видимые 5..7
-            // С overscan=2: расширяется до 3..9
+            // Without overscan: scrollPos=500, viewport=300 => visible 5..7
+            // With overscan=2: expanded to 3..9
             var range = calc.FindVisibleRange(500f, 300f, 2);
 
             Assert.AreEqual(3, range.FirstIndex);
@@ -114,7 +114,7 @@ namespace Shtl.Mvvm.Tests
             var calc = new LayoutCalculator();
             calc.Rebuild(5, 100f);
 
-            // scrollPos=0, viewport=200, overscan=5 => first clamp к 0, last clamp к 4
+            // scrollPos=0, viewport=200, overscan=5 => first clamps to 0, last clamps to 4
             var range = calc.FindVisibleRange(0f, 200f, 5);
 
             Assert.AreEqual(0, range.FirstIndex);
@@ -128,9 +128,9 @@ namespace Shtl.Mvvm.Tests
             var calc = new LayoutCalculator();
             calc.Rebuild(5, i => heights[i]);
 
-            // TotalHeight = 475. scrollPos=150 (после idx 0+1), viewport=250
+            // TotalHeight = 475. scrollPos=150 (after idx 0+1), viewport=250
             // idx 2 offset=150, idx 3 offset=225, idx 4 offset=425
-            // scrollPos+viewport=400 => последний видимый содержит idx 3 (225+200=425 > 400, но начинается 225 < 400)
+            // scrollPos+viewport=400 => last visible includes idx 3 (225+200=425 > 400, but starts at 225 < 400)
             var range = calc.FindVisibleRange(150f, 250f, 0);
 
             Assert.AreEqual(2, range.FirstIndex);
@@ -143,7 +143,7 @@ namespace Shtl.Mvvm.Tests
             var calc = new LayoutCalculator();
             calc.Rebuild(1000, 50f);
 
-            // O(1) путь: index * fixedHeight
+            // O(1) path: index * fixedHeight
             Assert.AreEqual(500 * 50f, calc.GetItemOffset(500));
             Assert.AreEqual(999 * 50f, calc.GetItemOffset(999));
         }
@@ -157,7 +157,7 @@ namespace Shtl.Mvvm.Tests
 
             Assert.AreEqual(225f, calc.TotalHeight);
 
-            // Вставляем элемент с высотой 30 на позицию 1
+            // Insert an element with height 30 at position 1.
             float[] newHeights = { 50f, 30f, 100f, 75f };
             calc.InsertAt(1, 4, i => newHeights[i]);
 
@@ -175,7 +175,7 @@ namespace Shtl.Mvvm.Tests
 
             Assert.AreEqual(425f, calc.TotalHeight);
 
-            // Удаляем элемент 1 (высота 100)
+            // Remove element 1 (height 100).
             float[] newHeights = { 50f, 75f, 200f };
             calc.RemoveAt(1, 3, i => newHeights[i]);
 
@@ -190,7 +190,7 @@ namespace Shtl.Mvvm.Tests
             var calc = new LayoutCalculator();
             calc.Rebuild(5, 100f);
 
-            // scrollPos=1000 > totalHeight=500 => должен вернуть последний элемент
+            // scrollPos=1000 > totalHeight=500 => should return the last element
             var range = calc.FindVisibleRange(1000f, 250f, 0);
 
             Assert.AreEqual(4, range.LastIndex);
@@ -202,7 +202,7 @@ namespace Shtl.Mvvm.Tests
             var calc = new LayoutCalculator();
             calc.Rebuild(3, 100f);
 
-            // viewport=500 > totalHeight=300 => все 3 элемента видны
+            // viewport=500 > totalHeight=300 => all 3 elements are visible
             var range = calc.FindVisibleRange(0f, 500f, 0);
 
             Assert.AreEqual(0, range.FirstIndex);
@@ -243,11 +243,10 @@ namespace Shtl.Mvvm.Tests
             Assert.AreEqual(0, range.Count);
         }
 
-        // Ось-агностичные тесты: LayoutCalculator оперирует скалярами и одинаково
-        // работает для вертикальной (Y) и горизонтальной (X) оси. Эти тесты
-        // документируют контракт, гарантируя, что биндинг может опираться на
-        // одни и те же значения, интерпретируя их как либо высоту/смещение по Y,
-        // либо ширину/смещение по X.
+        // Axis-agnostic tests: LayoutCalculator operates on scalars and works identically
+        // for the vertical (Y) and horizontal (X) axis. These tests document the contract,
+        // guaranteeing that the binding can rely on the same values whether interpreted as
+        // height/offset along Y or width/offset along X.
 
         [Test]
         public void FindVisibleRange_AxisAgnostic_FixedSize_SameResultForXAndY()
@@ -258,8 +257,8 @@ namespace Shtl.Mvvm.Tests
             var calcAsX = new LayoutCalculator();
             calcAsX.Rebuild(10, 100f);
 
-            // viewportSize=300 интерпретируется как высота (для Y) или ширина (для X) —
-            // calculator должен вернуть одинаковый видимый диапазон.
+            // viewportSize=300 is interpreted as height (for Y) or width (for X) —
+            // the calculator must return the same visible range.
             var rangeY = calcAsY.FindVisibleRange(150f, 300f, 1);
             var rangeX = calcAsX.FindVisibleRange(150f, 300f, 1);
 
@@ -279,8 +278,8 @@ namespace Shtl.Mvvm.Tests
             var calcAsX = new LayoutCalculator();
             calcAsX.Rebuild(sizes.Length, i => sizes[i]);
 
-            // Те же размеры, тот же scrollPosition и viewportSize — независимо от того,
-            // трактуем ли мы их как Y или как X, результат идентичен.
+            // Same sizes, same scrollPosition and viewportSize — regardless of whether we
+            // interpret them as Y or X, the result is identical.
             var rangeY = calcAsY.FindVisibleRange(120f, 250f, 0);
             var rangeX = calcAsX.FindVisibleRange(120f, 250f, 0);
 
@@ -350,7 +349,7 @@ namespace Shtl.Mvvm.Tests
             calc.SetSpacing(10f);
             calc.Rebuild(3, i => heights[i]);
 
-            // Spacing не должен включаться в размер самого элемента
+            // Spacing must not be included in the item's own size.
             Assert.AreEqual(50f, calc.GetItemHeight(0));
             Assert.AreEqual(100f, calc.GetItemHeight(1));
             Assert.AreEqual(75f, calc.GetItemHeight(2));
@@ -364,7 +363,7 @@ namespace Shtl.Mvvm.Tests
             calc.SetSpacing(0f);
             calc.Rebuild(5, i => heights[i]);
 
-            // Должно совпадать с существующими тестами без spacing
+            // Must match the existing tests without spacing.
             Assert.AreEqual(475f, calc.TotalHeight);
             Assert.AreEqual(225f, calc.GetItemOffset(3));
             Assert.AreEqual(50f, calc.GetItemHeight(0));
@@ -384,7 +383,7 @@ namespace Shtl.Mvvm.Tests
             calcAsX.SetSpacing(spacing);
             calcAsX.Rebuild(sizes.Length, i => sizes[i]);
 
-            // Скаляры одинаковые → результат идентичен независимо от трактовки оси
+            // Same scalars → result is identical regardless of axis interpretation.
             Assert.AreEqual(calcAsY.TotalHeight, calcAsX.TotalHeight);
             Assert.AreEqual(calcAsY.GetItemOffset(3), calcAsX.GetItemOffset(3));
 

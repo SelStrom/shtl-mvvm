@@ -27,7 +27,7 @@ namespace Shtl.Mvvm
             VirtualScrollRect scrollRect)
         {
             Assert.IsNotNull(scrollRect.Viewport,
-                $"{nameof(VirtualScrollRect)}.Viewport обязателен — назначь RectTransform с RectMask2D");
+                $"{nameof(VirtualScrollRect)}.Viewport is required — assign a RectTransform with RectMask2D");
 
             _vmList = vmList;
             _scrollRect = scrollRect;
@@ -41,11 +41,11 @@ namespace Shtl.Mvvm
             IWidgetViewFactory<TViewModel, TWidgetView> factory,
             VirtualScrollRect scrollRect)
         {
-            // Симметрично prefab-перегрузке: без Viewport ViewportSize=0,
-            // FindVisibleRange отдаёт пустой диапазон -- безмолвный сбой.
-            Assert.IsNotNull(scrollRect, $"{nameof(VirtualScrollRect)} обязателен");
+            // Mirror the prefab overload: without Viewport, ViewportSize=0 and
+            // FindVisibleRange returns an empty range -- a silent failure.
+            Assert.IsNotNull(scrollRect, $"{nameof(VirtualScrollRect)} is required");
             Assert.IsNotNull(scrollRect.Viewport,
-                $"{nameof(VirtualScrollRect)}.Viewport обязателен — назначь RectTransform с RectMask2D");
+                $"{nameof(VirtualScrollRect)}.Viewport is required — assign a RectTransform with RectMask2D");
 
             _vmList = vmList;
             _scrollRect = scrollRect;
@@ -83,10 +83,10 @@ namespace Shtl.Mvvm
 
             var newHeight = _vmList.GetItemHeight(index);
 
-            // B-7: при добавлении ПЕРВОГО элемента в пустой список инициализируем fixed-mode.
-            // Без этого первый Add попадает в InsertAt-ветку (т.к. _isFixedLayout=false по умолчанию),
-            // и LayoutCalculator навсегда деградирует в variable-mode -- даже если все последующие
-            // элементы той же высоты.
+            // B-7: when adding the FIRST element to an empty list, initialise fixed-mode.
+            // Without this, the first Add lands in the InsertAt branch (because _isFixedLayout=false by default),
+            // and LayoutCalculator permanently degrades into variable-mode -- even if every subsequent
+            // element has the same height.
             if (count == 1)
             {
                 _isFixedLayout = true;
@@ -95,7 +95,7 @@ namespace Shtl.Mvvm
 
             if (_isFixedLayout && Math.Abs(newHeight - _fixedItemHeight) < 0.001f)
             {
-                // O(N) rebuild prefix-sum, но fixed-mode сохраняется -> O(1) индексация остаётся.
+                // O(N) rebuild of prefix-sum, but fixed-mode is preserved -> O(1) indexing still applies.
                 _layoutCalculator.Rebuild(count, _fixedItemHeight);
             }
             else
@@ -105,18 +105,18 @@ namespace Shtl.Mvvm
                 _fixedItemHeight = 0f;
             }
 
-            // Сдвигаем индексы в _activeViews ДО SetContentSize/ScrollPosition: оба триггерят
-            // OnScrollPositionChanged → UpdateVisibleRange, и если _activeViews ещё содержит
-            // старые ключи, View попадёт в "out-of-range" и будет Release'нут, а потом снова
-            // выдан из пула при создании нового активного диапазона -- это приводит к
-            // повторному OnDisposed (double-dispose).
+            // Shift indices in _activeViews BEFORE SetContentSize/ScrollPosition: both trigger
+            // OnScrollPositionChanged → UpdateVisibleRange, and if _activeViews still holds the
+            // old keys, the View falls into "out-of-range" and is Released, then handed out from
+            // the pool again when the new active range is created -- this leads to a duplicate
+            // OnDisposed (double-dispose).
             ShiftActiveViewIndices(index, 1);
 
             _scrollRect.SetContentSize(_layoutCalculator.TotalHeight);
 
-            // Корректировка scroll position при добавлении выше viewport.
-            // stride = height + spacing (см. инвариант prefix-sum в LayoutCalculator):
-            // все элементы справа от index сдвигаются на ровно эту величину.
+            // Adjust scroll position when inserting above the viewport.
+            // stride = height + spacing (see the prefix-sum invariant in LayoutCalculator):
+            // every element to the right of index shifts by exactly this delta.
             if (index < _currentRange.FirstIndex)
             {
                 _scrollRect.ScrollPosition += newHeight + _scrollRect.Spacing;
@@ -129,7 +129,7 @@ namespace Shtl.Mvvm
         {
             var heightOfRemoved = _layoutCalculator.GetItemHeight(index);
 
-            // Если удалённый элемент имеет активный View -- освобождаем
+            // If the removed element has an active View, release it.
             if (_activeViews.TryGetValue(index, out var view))
             {
                 _recyclingPool.Release(view);
@@ -141,7 +141,7 @@ namespace Shtl.Mvvm
 
             if (_isFixedLayout)
             {
-                // Все оставшиеся элементы по-прежнему той же высоты -> fixed-path сохраняется.
+                // All remaining elements still have the same height -> fixed-path is preserved.
                 _layoutCalculator.Rebuild(count, _fixedItemHeight);
             }
             else
@@ -149,14 +149,14 @@ namespace Shtl.Mvvm
                 _layoutCalculator.RemoveAt(index, count, GetHeightProvider());
             }
 
-            // Сдвигаем индексы в _activeViews ДО SetContentSize/ScrollPosition (см. OnElementAdded
-            // выше для обоснования).
+            // Shift indices in _activeViews BEFORE SetContentSize/ScrollPosition (see OnElementAdded
+            // above for the rationale).
             ShiftActiveViewIndices(index + 1, -1);
 
             _scrollRect.SetContentSize(_layoutCalculator.TotalHeight);
 
-            // Корректировка scroll position при удалении выше viewport.
-            // Симметрично OnElementAdded: stride = height + spacing.
+            // Adjust scroll position when removing above the viewport.
+            // Mirroring OnElementAdded: stride = height + spacing.
             if (index < _currentRange.FirstIndex)
             {
                 _scrollRect.ScrollPosition -= heightOfRemoved + _scrollRect.Spacing;
@@ -169,7 +169,7 @@ namespace Shtl.Mvvm
         {
             if (_activeViews.TryGetValue(index, out var view))
             {
-                // Per Pitfall 3: Dispose перед Connect
+                // Per Pitfall 3: Dispose before Connect.
                 view.Dispose();
                 view.Connect(element);
             }
@@ -179,11 +179,11 @@ namespace Shtl.Mvvm
 
             if (_isFixedLayout && Math.Abs(newHeight - _fixedItemHeight) < 0.001f)
             {
-                // Высота не изменилась -- prefix-sum остаётся валидным, layout пересчитывать не нужно.
+                // Height did not change -- prefix-sum stays valid, no need to recompute layout.
             }
             else
             {
-                // Инкрементальный пересчёт хвоста: O(N - index) вместо O(N) на полный rebuild.
+                // Incremental tail recompute: O(N - index) instead of O(N) for a full rebuild.
                 _layoutCalculator.UpdateAt(index, _vmList.Count, GetHeightProvider());
                 _isFixedLayout = false;
                 _fixedItemHeight = 0f;
@@ -195,12 +195,12 @@ namespace Shtl.Mvvm
 
         private void OnScrollPositionChanged(float scrollPosition)
         {
-            // W-06: контракт ReactiveVirtualList.ScrollPosition -- одностороннее **чтение**
-            // позиции скролла из биндинга. Запись пользователем в ScrollPosition.Value НЕ
-            // сдвигает scroll: VirtualScrollRect не подписывается на ReactiveValue. Если
-            // потребуется императивный скролл из user-кода, использовать VirtualScrollRect
-            // напрямую (внутренний API ScrollTo / ScrollToIndex), либо ввести двунаправленный
-            // канал в будущем (потребует расширения ReactiveValue до multi-subscriber).
+            // W-06: the contract of ReactiveVirtualList.ScrollPosition is one-way **read** of the
+            // scroll position from the binding. A user write to ScrollPosition.Value does NOT
+            // move the scroll: VirtualScrollRect is not subscribed to the ReactiveValue. If
+            // imperative scrolling from user code is needed, use VirtualScrollRect directly
+            // (internal ScrollTo / ScrollToIndex API), or introduce a bidirectional channel
+            // later (would require extending ReactiveValue to multi-subscriber).
             _vmList.ScrollPosition.Value = scrollPosition;
             UpdateVisibleRange();
         }
@@ -209,7 +209,7 @@ namespace Shtl.Mvvm
         {
             if (_vmList.Count == 0)
             {
-                // Очищаем все активные Views
+                // Release every active View.
                 foreach (var kvp in _activeViews)
                 {
                     _recyclingPool.Release(kvp.Value);
@@ -229,7 +229,7 @@ namespace Shtl.Mvvm
                 _scrollRect.ViewportSize,
                 _scrollRect.OverscanCount);
 
-            // Определить элементы, вышедшие из диапазона
+            // Determine which elements left the visible range.
             _indicesToRemove.Clear();
             foreach (var kvp in _activeViews)
             {
@@ -239,7 +239,7 @@ namespace Shtl.Mvvm
                 }
             }
 
-            // Освобождаем вышедшие из диапазона View
+            // Release Views that fell out of the range.
             for (var i = 0; i < _indicesToRemove.Count; i++)
             {
                 var idx = _indicesToRemove[i];
@@ -247,20 +247,20 @@ namespace Shtl.Mvvm
                 _activeViews.Remove(idx);
             }
 
-            // Создаём View для новых элементов в диапазоне
+            // Create Views for newly visible elements in the range.
             for (var idx = newRange.FirstIndex; idx <= newRange.LastIndex; idx++)
             {
                 if (_activeViews.TryGetValue(idx, out var activeView))
                 {
-                    // Обновляем позицию существующего View
+                    // Update the position of the existing View.
                     PositionView(activeView, idx, scrollPosition);
                     continue;
                 }
 
                 var view = _recyclingPool.Get();
                 view.Connect(_vmList[idx]);
-                // Якоря/pivot зависят только от Axis (фиксирован после Connect биндинга),
-                // поэтому ставим один раз при выдаче из пула, а не на каждом ticke скролла.
+                // Anchors/pivot depend only on Axis (fixed after binding Connect),
+                // so set them once when leaving the pool rather than every scroll tick.
                 ConfigureViewAnchors(view);
                 PositionView(view, idx, scrollPosition);
                 _activeViews[idx] = view;
@@ -271,9 +271,9 @@ namespace Shtl.Mvvm
             _vmList.VisibleCount.Value = newRange.Count;
         }
 
-        // Якоря/pivot зависят только от Axis -- константы для всего жизненного цикла биндинга.
-        // Ставим один раз при выдаче view из пула, чтобы не дёргать Unity native-side dirtyflags
-        // на каждом ticke скролла.
+        // Anchors/pivot depend only on Axis -- constants for the entire binding lifetime.
+        // Set them once when a view leaves the pool to avoid hitting Unity native-side dirtyflags
+        // every scroll tick.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ConfigureViewAnchors(TWidgetView view)
         {
@@ -285,14 +285,14 @@ namespace Shtl.Mvvm
 
             if (_scrollRect.Axis == ScrollAxis.Vertical)
             {
-                // Растягиваем по ширине viewport, фиксируем высоту по элементу.
+                // Stretch to viewport width, fix height to the item size.
                 rt.anchorMin = new Vector2(0f, 1f);
                 rt.anchorMax = new Vector2(1f, 1f);
                 rt.pivot = new Vector2(0f, 1f);
             }
             else
             {
-                // Растягиваем по высоте viewport, фиксируем ширину по элементу.
+                // Stretch to viewport height, fix width to the item size.
                 rt.anchorMin = new Vector2(0f, 0f);
                 rt.anchorMax = new Vector2(0f, 1f);
                 rt.pivot = new Vector2(0f, 0f);
@@ -335,7 +335,7 @@ namespace Shtl.Mvvm
                 }
             }
 
-            // Сортируем для корректного сдвига (при shift > 0 -- с конца, при shift < 0 -- с начала)
+            // Sort to shift safely (when shift > 0 process from the tail, when shift < 0 from the head).
             if (shift > 0)
             {
                 _indicesToRemove.Sort((a, b) => b.CompareTo(a));
@@ -366,7 +366,7 @@ namespace Shtl.Mvvm
                 return;
             }
 
-            // Проверяем фиксированная ли высота
+            // Check whether all items share the same height.
             var firstHeight = _vmList.GetItemHeight(0);
             var isFixed = true;
             for (var i = 1; i < count; i++)
@@ -404,15 +404,15 @@ namespace Shtl.Mvvm
 
         public override void Dispose()
         {
-            // B-5: отвязываем callback ДО обнуления _scrollRect, чтобы последующие drag/wheel/setter
-            // не дёргали биндинг с null-полями.
+            // B-5: detach the callback BEFORE nulling _scrollRect so subsequent drag/wheel/setter
+            // calls don't poke a binding whose fields are null.
             _scrollRect?.SetOnScrollPositionChanged(null);
 
-            // B-4: Unbind разрешает повторный Connect к Items после Dispose биндинга.
+            // B-4: Unbind enables a fresh Connect to Items after the binding is Disposed.
             _vmList?.Items.Unbind();
 
-            // B-3: Release сам делает view.Dispose() (см. ViewRecyclingPool.Release),
-            // дополнительный явный Dispose приводил к double-dispose.
+            // B-3: Release itself calls view.Dispose() (see ViewRecyclingPool.Release);
+            // an extra explicit Dispose would cause a double-dispose.
             foreach (var kvp in _activeViews)
             {
                 _recyclingPool?.Release(kvp.Value);
@@ -422,7 +422,7 @@ namespace Shtl.Mvvm
 
             _recyclingPool?.DisposeAll();
 
-            // Сброс fixed-флагов: биндинги переиспользуются через BindingPool.
+            // Reset fixed-mode flags: bindings are reused through BindingPool.
             _isFixedLayout = false;
             _fixedItemHeight = 0f;
 

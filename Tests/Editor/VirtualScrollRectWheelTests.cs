@@ -6,23 +6,23 @@ using UnityEngine.EventSystems;
 namespace Shtl.Mvvm.Tests
 {
     /// <summary>
-    /// Регрессионные тесты на VLIST-03 (wheel rubber-band semantics).
+    /// Regression tests for VLIST-03 (wheel rubber-band semantics).
     ///
-    /// Контракт:
-    /// - MovementType.Elastic: wheel за границу применяет RubberDelta к over-bound части
-    ///   (асимптотическое сжатие, ограниченное ViewportSize), затем LateUpdate
-    ///   возвращает к границе через SmoothDamp когда wheel-ввод прекращается.
-    /// - MovementType.Clamped: hard-clamp в [0, maxScroll], без overshoot.
-    /// - MovementType.Unrestricted: raw delta, без ограничений.
-    /// - Judder-fix invariant: velocity всегда зануляется в OnScroll, не накапливается
-    ///   между wheel events, LateUpdate elastic SmoothDamp стартует с velocity=0.
+    /// Contract:
+    /// - MovementType.Elastic: wheel past the boundary applies RubberDelta to the over-bound part
+    ///   (asymptotic compression bounded by ViewportSize), then LateUpdate returns to the
+    ///   boundary via SmoothDamp once wheel input stops.
+    /// - MovementType.Clamped: hard-clamp into [0, maxScroll], no overshoot.
+    /// - MovementType.Unrestricted: raw delta, no constraints.
+    /// - Judder-fix invariant: velocity is always zeroed in OnScroll, does not accumulate
+    ///   between wheel events; LateUpdate elastic SmoothDamp starts from velocity=0.
     /// </summary>
     [TestFixture]
     public class VirtualScrollRectWheelTests
     {
-        // Поля и методы зачастую internal/private — используется reflection (как и в
-        // существующем VirtualCollectionBindingTests). Сами тесты — на наблюдаемое
-        // поведение через `internal` API (ScrollPosition / Velocity / SetContentSize).
+        // Fields and methods are often internal/private — reflection is used (same approach as
+        // the existing VirtualCollectionBindingTests). Tests assert observable behaviour through
+        // the `internal` API (ScrollPosition / Velocity / SetContentSize).
         private const float ViewportHeight = 300f;
         private const float ContentHeight = 1000f;
         private const float Sensitivity = 35f;
@@ -34,7 +34,7 @@ namespace Shtl.Mvvm.Tests
         [SetUp]
         public void SetUp()
         {
-            // EventSystem нужен для конструктора PointerEventData.
+            // EventSystem is required by the PointerEventData constructor.
             _eventSystemGo = new GameObject("EventSystem");
             _eventSystemGo.AddComponent<EventSystem>();
 
@@ -70,55 +70,55 @@ namespace Shtl.Mvvm.Tests
         [Test]
         public void OnScroll_Elastic_AtTopBound_AppliesRubberDeltaForNegativeOvershoot()
         {
-            // Arrange: позиция в начале (top), wheel пытается уйти "выше" нуля.
-            // В Elastic должен быть rubber-band overshoot, ограниченный ViewportSize.
+            // Arrange: position at the start (top), wheel tries to go "above" zero.
+            // In Elastic mode there must be a rubber-band overshoot bounded by ViewportSize.
             _scrollRect.ScrollPosition = 0f;
-            // scrollDelta.y > 0 у Unity = wheel вверх. В OnScroll: newPos = pos - delta * sensitivity.
-            // Положительный delta.y → newPos = -35f → за верхней границей.
+            // Unity convention: scrollDelta.y > 0 = wheel up. In OnScroll: newPos = pos - delta * sensitivity.
+            // Positive delta.y → newPos = -35f → past the top boundary.
             var eventData = MakeScrollEvent(scrollDeltaY: 1f);
 
             // Act
             _scrollRect.OnScroll(eventData);
 
-            // Assert: позиция уходит в отрицательную область (rubber-band), но overshoot
-            // ограничен ViewportSize (RubberDelta асимптотически приближается к viewSize).
+            // Assert: position goes negative (rubber-band), but the overshoot is bounded by
+            // ViewportSize (RubberDelta asymptotically approaches viewSize).
             Assert.Less(_scrollRect.ScrollPosition, 0f,
-                "Elastic wheel у верхней границы должен дать negative rubber-band overshoot.");
+                "Elastic wheel at the top boundary must produce a negative rubber-band overshoot.");
             Assert.GreaterOrEqual(_scrollRect.ScrollPosition, -ViewportHeight,
-                "RubberDelta overshoot ограничен ViewportSize.");
+                "RubberDelta overshoot is bounded by ViewportSize.");
             Assert.AreEqual(0f, _scrollRect.Velocity,
-                "Wheel не должен оставлять velocity (judder-fix invariant).");
+                "Wheel must not leave residual velocity (judder-fix invariant).");
         }
 
         [Test]
         public void OnScroll_Elastic_AtBottomBound_AppliesRubberDeltaForPositiveOvershoot()
         {
-            // Arrange: позиция у нижней границы, wheel вниз пытается уйти за maxScroll.
-            // В Elastic должен быть rubber-band overshoot, ограниченный ViewportSize.
+            // Arrange: position at the bottom boundary, wheel down tries to go past maxScroll.
+            // In Elastic mode there must be a rubber-band overshoot bounded by ViewportSize.
             var maxScroll = ContentHeight - ViewportHeight;
             _scrollRect.ScrollPosition = maxScroll;
-            // scrollDelta.y < 0 = wheel вниз → newPos = maxScroll + 35f → за нижней границей.
+            // scrollDelta.y < 0 = wheel down → newPos = maxScroll + 35f → past the bottom boundary.
             var eventData = MakeScrollEvent(scrollDeltaY: -1f);
 
             // Act
             _scrollRect.OnScroll(eventData);
 
-            // Assert: позиция уходит за maxScroll (rubber-band), overshoot ≤ ViewportSize.
+            // Assert: position goes past maxScroll (rubber-band), overshoot ≤ ViewportSize.
             Assert.Greater(_scrollRect.ScrollPosition, maxScroll,
-                "Elastic wheel у нижней границы должен дать positive rubber-band overshoot.");
+                "Elastic wheel at the bottom boundary must produce a positive rubber-band overshoot.");
             Assert.LessOrEqual(_scrollRect.ScrollPosition - maxScroll, ViewportHeight,
-                "RubberDelta overshoot ограничен ViewportSize.");
+                "RubberDelta overshoot is bounded by ViewportSize.");
             Assert.AreEqual(0f, _scrollRect.Velocity,
-                "Wheel не должен оставлять velocity (judder-fix invariant).");
+                "Wheel must not leave residual velocity (judder-fix invariant).");
         }
 
         [Test]
         public void OnScroll_Elastic_ContinuousWheelAtBound_OvershootBoundedByViewport()
         {
-            // Регрессионный тест на judder + новая rubber-band семантика:
-            // длительный непрерывный wheel вниз у нижней границы НЕ должен накапливать
-            // velocity (judder-fix), но overshoot допустим — он ограничен ViewportSize
-            // через RubberDelta. Velocity на каждом шаге == 0.
+            // Regression test for judder + new rubber-band semantics:
+            // a long continuous wheel-down at the bottom boundary must NOT accumulate
+            // velocity (judder-fix), but overshoot is allowed — bounded by ViewportSize
+            // through RubberDelta. Velocity must be 0 at every step.
             var maxScroll = ContentHeight - ViewportHeight;
             _scrollRect.ScrollPosition = maxScroll - 50f;
 
@@ -127,50 +127,50 @@ namespace Shtl.Mvvm.Tests
                 var eventData = MakeScrollEvent(scrollDeltaY: -1f);
                 _scrollRect.OnScroll(eventData);
 
-                // Overshoot bounded: rubber-band асимптотически приближается к ViewportSize,
-                // никогда его не превышая.
+                // Overshoot bounded: rubber-band asymptotically approaches ViewportSize,
+                // never exceeding it.
                 Assert.LessOrEqual(_scrollRect.ScrollPosition - maxScroll, ViewportHeight,
-                    $"Iteration {i}: rubber-band overshoot превысил ViewportSize.");
+                    $"Iteration {i}: rubber-band overshoot exceeded ViewportSize.");
                 Assert.GreaterOrEqual(_scrollRect.ScrollPosition, 0f,
-                    $"Iteration {i}: позиция ушла ниже 0.");
-                // Judder-fix invariant: velocity не накапливается между wheel events.
+                    $"Iteration {i}: position fell below 0.");
+                // Judder-fix invariant: velocity must not accumulate between wheel events.
                 Assert.AreEqual(0f, _scrollRect.Velocity,
-                    $"Iteration {i}: velocity накопилась — judder через carryover.");
+                    $"Iteration {i}: velocity accumulated — judder via carryover.");
             }
         }
 
         [Test]
         public void OnScroll_Elastic_LateUpdateReturnsToMaxScrollAfterWheelStops()
         {
-            // После rubber-band overshoot и прекращения wheel-ввода LateUpdate elastic-ветка
-            // должна возвращать позицию к maxScroll через SmoothDamp.
+            // After rubber-band overshoot and the wheel input stops, the LateUpdate
+            // elastic branch must return the position to maxScroll via SmoothDamp.
             var maxScroll = ContentHeight - ViewportHeight;
             _scrollRect.ScrollPosition = maxScroll;
 
-            // Несколько wheel events за границу — создаём rubber-band overshoot.
+            // Several wheel events past the boundary — produce a rubber-band overshoot.
             for (var i = 0; i < 5; i++)
             {
                 _scrollRect.OnScroll(MakeScrollEvent(scrollDeltaY: -1f));
             }
 
             Assert.Greater(_scrollRect.ScrollPosition, maxScroll,
-                "Sanity: должен быть rubber-band overshoot до прогона LateUpdate.");
+                "Sanity: rubber-band overshoot must be present before running LateUpdate.");
 
-            // VLIST-03 wheel-active guard: имитируем «прошло достаточно времени с
-            // последнего wheel event». Сбрасываем _lastWheelTime в NegativeInfinity,
-            // иначе LateUpdate elastic-ветка пропускает pull-back пока ввод активен.
-            // В EditMode unit-тесте Time.unscaledTime между OnScroll и LateUpdate
-            // не «течёт», поэтому без сброса guard был бы вечно активен.
+            // VLIST-03 wheel-active guard: simulate "enough time has passed since the last
+            // wheel event". Reset _lastWheelTime to NegativeInfinity, otherwise the LateUpdate
+            // elastic branch skips pull-back while input is active. In an EditMode unit test
+            // Time.unscaledTime does not advance between OnScroll and LateUpdate, so without
+            // this reset the guard would stay permanently active.
             SetPrivateField("_lastWheelTime", float.NegativeInfinity);
 
-            // Прогоняем LateUpdate через рефлексию — имитируем кадры без wheel-ввода.
+            // Run LateUpdate via reflection — simulate frames without wheel input.
             var lateUpdate = typeof(VirtualScrollRect).GetMethod(
                 "LateUpdate",
                 BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(lateUpdate, "LateUpdate должен быть доступен через рефлексию.");
+            Assert.IsNotNull(lateUpdate, "LateUpdate must be reachable via reflection.");
 
-            // 200 кадров заведомо достаточно: SmoothDamp с _elasticity=0.1 при unscaledDeltaTime≈0.02
-            // сходится к target за единицы кадров. Берём запас.
+            // 200 frames is more than enough: SmoothDamp with _elasticity=0.1 at
+            // unscaledDeltaTime≈0.02 converges to the target in a handful of frames. Headroom kept.
             for (var frame = 0; frame < 200; frame++)
             {
                 lateUpdate.Invoke(_scrollRect, null);
@@ -180,33 +180,33 @@ namespace Shtl.Mvvm.Tests
                 }
             }
 
-            // После завершения SmoothDamp позиция должна быть == maxScroll (с учётом
-            // VelocityStopThreshold=1 px/s LateUpdate выйдет когда velocity мала и offset==0).
+            // After SmoothDamp finishes the position must equal maxScroll (taking into account
+            // VelocityStopThreshold=1 px/s LateUpdate exits when velocity is small and offset==0).
             Assert.AreEqual(maxScroll, _scrollRect.ScrollPosition, 1f,
-                "LateUpdate elastic-ветка должна вернуть позицию к maxScroll после wheel.");
+                "LateUpdate elastic branch must return the position to maxScroll after wheel input.");
         }
 
         [Test]
         public void OnScroll_Elastic_DuringActiveWheelInput_LateUpdateDoesNotPullBack()
         {
-            // VLIST-03 root cause regression: между discrete wheel events LateUpdate
-            // elastic-ветка БЕЗ guard'а активно тянет позицию обратно к maxScroll
-            // через SmoothDamp, а следующий OnScroll re-rubber-сжимает overshoot
-            // на уже-возвращённой позиции → frame-by-frame push/pull oscillation
-            // (visible judder). Guard по _lastWheelTime/WheelActiveDuration должен
-            // блокировать pull-back пока ввод активен (симметрия с _isDragging-путём).
+            // VLIST-03 root cause regression: between discrete wheel events, the LateUpdate
+            // elastic branch WITHOUT a guard actively yanks the position back to maxScroll
+            // through SmoothDamp, while the next OnScroll re-rubber-compresses the overshoot
+            // on the already-returned position → frame-by-frame push/pull oscillation
+            // (visible judder). The _lastWheelTime/WheelActiveDuration guard must block
+            // pull-back while input is active (mirrors the _isDragging path).
             var maxScroll = ContentHeight - ViewportHeight;
             _scrollRect.ScrollPosition = maxScroll;
 
-            // Первый wheel event — создаём rubber-band overshoot и маркируем
-            // _lastWheelTime=Time.unscaledTime (значит guard активен).
+            // First wheel event — produce rubber-band overshoot and mark
+            // _lastWheelTime=Time.unscaledTime (so the guard becomes active).
             _scrollRect.OnScroll(MakeScrollEvent(scrollDeltaY: -1f));
             var overshootAfterFirstEvent = _scrollRect.ScrollPosition;
             Assert.Greater(overshootAfterFirstEvent, maxScroll,
-                "Sanity: первый wheel event должен дать positive overshoot.");
+                "Sanity: first wheel event must produce a positive overshoot.");
 
-            // Один LateUpdate-tick между wheel events. Guard должен заблокировать
-            // SmoothDamp pull-back: позиция НЕ должна уменьшиться к maxScroll.
+            // One LateUpdate tick between wheel events. The guard must block SmoothDamp
+            // pull-back: position must NOT drop towards maxScroll.
             var lateUpdate = typeof(VirtualScrollRect).GetMethod(
                 "LateUpdate",
                 BindingFlags.NonPublic | BindingFlags.Instance);
@@ -214,90 +214,90 @@ namespace Shtl.Mvvm.Tests
             lateUpdate.Invoke(_scrollRect, null);
 
             Assert.AreEqual(overshootAfterFirstEvent, _scrollRect.ScrollPosition, 0.0001f,
-                "Во время активного wheel-input LateUpdate НЕ должен тянуть позицию " +
-                "обратно к maxScroll — иначе judder.");
-            // Velocity явно обнулена в guard-ветке — следующий SmoothDamp при отпускании
-            // ввода должен стартовать с velocity=0 (чистый rubber-release feel).
+                "While wheel input is active, LateUpdate must NOT pull the position back to " +
+                "maxScroll — otherwise judder.");
+            // Velocity is explicitly zeroed in the guard branch — the next SmoothDamp on input
+            // release must start from velocity=0 (clean rubber-release feel).
             Assert.AreEqual(0f, _scrollRect.Velocity,
-                "Guard-ветка должна явно зануулить velocity для чистого старта SmoothDamp.");
+                "The guard branch must explicitly zero velocity for a clean SmoothDamp start.");
         }
 
         [Test]
         public void OnScroll_Elastic_ResetsVelocityFromPreviousFrame()
         {
-            // Judder-fix invariant: если в предыдущий кадр LateUpdate Elastic-ветка оставила
-            // _velocity != 0 (drag-release / SmoothDamp у границы), следующий wheel event
-            // должен сбросить velocity → SmoothDamp на следующем LateUpdate стартует
-            // с velocity=0 → нет judder через carryover.
+            // Judder-fix invariant: if on a previous frame the LateUpdate Elastic branch left
+            // _velocity != 0 (drag-release / SmoothDamp at the boundary), the next wheel event
+            // must reset velocity → SmoothDamp on the next LateUpdate starts from velocity=0
+            // → no judder via carryover.
             SetPrivateField("_velocity", -500f);
-            _scrollRect.ScrollPosition = 200f; // в пределах bounds
+            _scrollRect.ScrollPosition = 200f; // within bounds
 
             var eventData = MakeScrollEvent(scrollDeltaY: -1f);
             _scrollRect.OnScroll(eventData);
 
             Assert.AreEqual(0f, _scrollRect.Velocity,
-                "Wheel должен сбрасывать стэйл velocity carryover из предыдущего кадра.");
+                "Wheel must reset stale velocity carryover from the previous frame.");
         }
 
         [Test]
         public void OnScroll_Clamped_HardClampsAtTopBound()
         {
-            // В Clamped-режиме wheel у границы клампится жёстко, без rubber-band.
+            // In Clamped mode wheel at the boundary is hard-clamped, no rubber-band.
             SetPrivateField("_movementType", MovementType.Clamped);
             _scrollRect.ScrollPosition = 0f;
 
-            var eventData = MakeScrollEvent(scrollDeltaY: 1f); // wheel "выше" нуля
+            var eventData = MakeScrollEvent(scrollDeltaY: 1f); // wheel "above" zero
             _scrollRect.OnScroll(eventData);
 
             Assert.AreEqual(0f, _scrollRect.ScrollPosition,
-                "Clamped wheel у верхней границы должен hard-clamp в 0 без overshoot.");
+                "Clamped wheel at the top boundary must hard-clamp to 0 with no overshoot.");
             Assert.AreEqual(0f, _scrollRect.Velocity);
         }
 
         [Test]
         public void OnScroll_Clamped_HardClampsAtBottomBound()
         {
-            // Симметричная проверка: Clamped у нижней границы тоже hard-clamp.
+            // Symmetric check: Clamped at the bottom boundary also hard-clamps.
             SetPrivateField("_movementType", MovementType.Clamped);
             var maxScroll = ContentHeight - ViewportHeight;
             _scrollRect.ScrollPosition = maxScroll;
 
-            var eventData = MakeScrollEvent(scrollDeltaY: -1f); // wheel вниз
+            var eventData = MakeScrollEvent(scrollDeltaY: -1f); // wheel down
             _scrollRect.OnScroll(eventData);
 
             Assert.AreEqual(maxScroll, _scrollRect.ScrollPosition,
-                "Clamped wheel у нижней границы должен hard-clamp в maxScroll без overshoot.");
+                "Clamped wheel at the bottom boundary must hard-clamp to maxScroll with no overshoot.");
             Assert.AreEqual(0f, _scrollRect.Velocity);
         }
 
         [Test]
         public void OnScroll_Unrestricted_AppliesRawDelta()
         {
-            // В Unrestricted-режиме wheel применяет raw delta, без clamp и без rubber-band.
-            // Позиция может уходить за любые границы.
+            // In Unrestricted mode wheel applies the raw delta with no clamp and no rubber-band.
+            // The position is allowed to go past any boundary.
             SetPrivateField("_movementType", MovementType.Unrestricted);
             var maxScroll = ContentHeight - ViewportHeight;
             _scrollRect.ScrollPosition = maxScroll;
 
-            var eventData = MakeScrollEvent(scrollDeltaY: -1f); // wheel вниз → +35f
+            var eventData = MakeScrollEvent(scrollDeltaY: -1f); // wheel down → +35f
             _scrollRect.OnScroll(eventData);
 
-            // Точное равенство (raw delta, без любых преобразований).
+            // Strict equality (raw delta, no transformations).
             Assert.AreEqual(maxScroll + Sensitivity, _scrollRect.ScrollPosition, 0.0001f,
-                "Unrestricted wheel должен применить raw delta без clamp/rubber-band.");
+                "Unrestricted wheel must apply the raw delta without clamp/rubber-band.");
             Assert.AreEqual(0f, _scrollRect.Velocity);
         }
 
         [Test]
         public void OnScroll_InMiddle_ShiftsByDeltaTimesSensitivity()
         {
-            // Нормальная середина — wheel должен двигать позицию ровно на delta * sensitivity
-            // во всех режимах. Гарантирует, что новый branch-by-MovementType не ломает
-            // корректное движение в bounds.
+            // Normal mid-content position — wheel must move the position by exactly
+            // delta * sensitivity in every mode. Guarantees the new branch-by-MovementType
+            // logic does not break correct in-bounds movement.
             const float startPos = 200f;
             _scrollRect.ScrollPosition = startPos;
 
-            var eventData = MakeScrollEvent(scrollDeltaY: -1f); // wheel вниз — позиция растёт
+            var eventData = MakeScrollEvent(scrollDeltaY: -1f); // wheel down — position grows
             _scrollRect.OnScroll(eventData);
 
             // _scrollPosition -= (-1f) * 35f = +35f.
@@ -308,16 +308,16 @@ namespace Shtl.Mvvm.Tests
         [Test]
         public void OnScroll_ContentSmallerThanViewport_IsIgnored()
         {
-            // Sanity-check guard'а из 01-06: при contentHeight <= viewportSize wheel
-            // не изменяет _scrollPosition (полная блокировка scroll'а).
-            _scrollRect.SetContentSize(ViewportHeight - 50f); // меньше viewport
+            // Sanity check for the guard from 01-06: when contentHeight <= viewportSize
+            // wheel must not change _scrollPosition (full scroll lock).
+            _scrollRect.SetContentSize(ViewportHeight - 50f); // smaller than viewport
             _scrollRect.ScrollPosition = 0f;
 
             var eventData = MakeScrollEvent(scrollDeltaY: -1f);
             _scrollRect.OnScroll(eventData);
 
             Assert.AreEqual(0f, _scrollRect.ScrollPosition,
-                "При contentHeight <= viewportHeight wheel должен полностью игнорироваться.");
+                "When contentHeight <= viewportHeight wheel must be fully ignored.");
         }
 
         // ---- helpers -------------------------------------------------------
@@ -335,7 +335,7 @@ namespace Shtl.Mvvm.Tests
             var field = typeof(VirtualScrollRect).GetField(
                 name,
                 BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(field, $"Поле '{name}' не найдено на VirtualScrollRect.");
+            Assert.IsNotNull(field, $"Field '{name}' not found on VirtualScrollRect.");
             field.SetValue(_scrollRect, value);
         }
     }

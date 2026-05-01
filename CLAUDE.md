@@ -111,6 +111,7 @@ MVVM-фреймворк для Unity с чётким разделением сл
 - Строковая интерполяция: `Debug.Log($"StartAnimation in '{name}'")`
 - В ядре библиотеки логирование не используется
 ## Комментарии
+- **Язык комментариев — только английский.** Все `//`, `/* */`, `///`, runtime-сообщения в `throw`/`Assert.IsTrue`/`Debug.Log` пишутся на английском. На русском — только `.planning/`, `.md`-документация, commit-сообщения, Inspector-подсказки для дизайнеров.
 - TODO-комментарии с авторством: `//TODO @a.shatalov: pass something keyable instead of object`
 - TODO со ссылкой на задачу: `//TODO make editable https://app.asana.com/...`
 - Пояснения сложной логики: `// Only unbinds the view model, does not destroy it`

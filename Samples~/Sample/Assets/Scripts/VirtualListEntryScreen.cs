@@ -17,8 +17,8 @@ namespace Shtl.Mvvm.Samples
         {
             _model = new ChatModel();
             _chatViewModel = new ChatViewModel();
-            // W-05: высоту передаём через ctor, чтобы не переприсваивать ReactiveVirtualList
-            // после конструирования (object initializer ломал бы reflection-кэш AbstractViewModel).
+            // W-05: pass the height through the ctor so we don't re-assign ReactiveVirtualList
+            // after construction (an object initializer would break AbstractViewModel's reflection cache).
             _verticalMessages = new ChatMessagesViewModel(80f);
             _horizontalMessages = new ChatMessagesViewModel(208f);
 
@@ -27,7 +27,7 @@ namespace Shtl.Mvvm.Samples
             _horizontalWidgetView.Connect(_horizontalMessages);
             new VirtualListSampleWidget().Connect(_model, _chatViewModel, _verticalMessages, _horizontalMessages);
 
-            // Начальные данные
+            // Seed data.
             _model.AddBatch(3);
         }
     }

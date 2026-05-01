@@ -49,9 +49,9 @@ namespace Shtl.Mvvm
 
             if (_fixedHeight <= 0f)
             {
-                // Parameterless конструктор оставляет _fixedHeight=0 и _heightProvider=null.
-                // Тихий return 0 ломает виртуализацию: TotalHeight=0, FindVisibleRange отдаёт весь
-                // список. Бросаем явно, чтобы ошибка проявилась в первом же вызове, а не позже.
+                // Parameterless constructor leaves _fixedHeight=0 and _heightProvider=null.
+                // Silently returning 0 breaks virtualization: TotalHeight=0, FindVisibleRange yields
+                // the entire list. Throw explicitly so the error surfaces on the first call, not later.
                 throw new InvalidOperationException(
                     "ReactiveVirtualList constructed without fixed height or height provider; cannot resolve item height.");
             }

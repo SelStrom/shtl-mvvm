@@ -22,19 +22,19 @@ namespace Shtl.Mvvm
     public class VirtualScrollRect : MonoBehaviour,
         IBeginDragHandler, IDragHandler, IEndDragHandler, IScrollHandler
     {
-        // Порог остановки инерции: ниже 1 px/s движение визуально незаметно.
-        // При необходимости масштабировать относительно ViewportSize.
+        // Inertia stop threshold: below 1 px/s motion is visually imperceptible.
+        // Scale relative to ViewportSize if needed.
         private const float VelocityStopThreshold = 1f;
 
-        // VLIST-03: окно «активного» wheel-ввода. Если последний OnScroll был
-        // ближе по времени, LateUpdate elastic-ветка НЕ запускает SmoothDamp
-        // pull-back к границе — иначе между discrete wheel events SmoothDamp
-        // активно возвращает позицию, а следующий OnScroll re-сжимает overshoot
-        // на уже-возвращённой позиции → frame-by-frame push/pull oscillation
-        // (visible judder). Симметрия с _isDragging guard'ом для drag-пути.
-        // 0.08s ≈ 5 кадров при 60fps — покрывает типичный интервал между
-        // wheel events на mac touchpad/wheel (8-16ms), при отпускании ввода
-        // воспринимается как мгновенный spring-back.
+        // VLIST-03: "active" wheel-input window. If the last OnScroll happened more
+        // recently than this, the LateUpdate elastic branch does NOT run the SmoothDamp
+        // pull-back to the boundary — otherwise SmoothDamp keeps yanking the position
+        // back between discrete wheel events while the next OnScroll re-rubber-compresses
+        // the overshoot on the already-pulled-back position → frame-by-frame push/pull
+        // oscillation (visible judder). Mirrors the _isDragging guard on the drag path.
+        // 0.08s ≈ 5 frames at 60fps — covers the typical interval between wheel events
+        // on mac touchpad/wheel (8-16ms); when input is released it feels like an
+        // instant spring-back.
         private const float WheelActiveDuration = 0.08f;
 
         [SerializeField] private RectTransform _viewport;
@@ -54,9 +54,9 @@ namespace Shtl.Mvvm
         private bool _isDragging;
         private float _prevDragPosition;
         private bool _updatingScrollbar;
-        // VLIST-03: timestamp последнего wheel-input. NegativeInfinity = «никогда не было»,
-        // гарантирует что guard в LateUpdate ложный по умолчанию (без активного ввода
-        // pull-back должен работать сразу).
+        // VLIST-03: timestamp of the last wheel-input. NegativeInfinity = "never happened",
+        // guarantees that the guard in LateUpdate is false by default (without active input
+        // the pull-back must run immediately).
         private float _lastWheelTime = float.NegativeInfinity;
 
         private Action<float> _onScrollPositionChanged;
@@ -104,11 +104,11 @@ namespace Shtl.Mvvm
 
         internal void SetContentSize(float size)
         {
-            //todo размер контента должен быть инвариантным для разных типов скролла
+            //todo content size should be invariant across scroll types
             _contentHeight = size;
-            // Контент сжался настолько, что текущая позиция вышла за допустимые границы --
-            // сбрасываем инерцию, чтобы Elastic-возврат был чистым и не происходило рывков
-            // от продолжающейся velocity старого направления (например, при быстром Add/Clear).
+            // Content shrank enough that the current position fell outside the valid range --
+            // reset inertia so the Elastic return-to-bounds is clean and we avoid jolts from
+            // residual velocity in the old direction (e.g. on rapid Add/Clear).
             var maxScroll = MaxScrollPosition();
             if (_scrollPosition > maxScroll || _scrollPosition < 0f)
             {
@@ -143,10 +143,10 @@ namespace Shtl.Mvvm
             _onScrollPositionChanged = callback;
         }
 
-        // W-07: метод сейчас не имеет вызывающих в Runtime/Editor/Samples. Оставлен в API
-        // как явная точка для use-case "сбросить позицию при смене ViewModel" из внешнего кода
-        // (binding или потребитель). При экспорте в тесты через InternalsVisibleTo или удалении
-        // -- решать по факту появления вызывающего.
+        // W-07: this method currently has no callers in Runtime/Editor/Samples. It is kept in the
+        // API as an explicit hook for the "reset position on ViewModel switch" use case from
+        // external code (binding or consumer). Whether to expose it to tests via InternalsVisibleTo
+        // or to delete it should be decided when an actual caller appears.
         internal void ResetScroll()
         {
             _scrollPosition = 0f;
@@ -159,10 +159,10 @@ namespace Shtl.Mvvm
             if (_scrollbar != null)
             {
                 _scrollbar.onValueChanged.AddListener(OnScrollbarValueChanged);
-                // W-07: синхронизируем scrollbar с текущим _scrollPosition. Если scrollbar
-                // включается после того, как позиция уже изменилась (смена ViewModel,
-                // re-enable компонента), без этого вызова scrollbar остался бы в value=0
-                // до первого OnScrollPositionChanged.
+                // W-07: sync scrollbar with the current _scrollPosition. If the scrollbar is
+                // enabled after the position has already changed (ViewModel switch, component
+                // re-enable), without this call the scrollbar would stay at value=0 until the
+                // first OnScrollPositionChanged.
                 UpdateScrollbar();
             }
         }
@@ -193,14 +193,13 @@ namespace Shtl.Mvvm
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            // _isDragging и _prevDragPosition выставляем ДО guard'а, чтобы пара Begin/End
-            // оставалась симметричной и _prevDragPosition не содержал stale-значения
-            // из предыдущей drag-сессии (важно при динамическом изменении контента
-            // во время drag — см. WR-01).
+            // _isDragging and _prevDragPosition are set BEFORE the guard so the Begin/End pair
+            // stays symmetric and _prevDragPosition does not hold a stale value from a previous
+            // drag session (important when content size changes mid-drag — see WR-01).
             _isDragging = true;
             _prevDragPosition = GetLocalPosition(eventData);
 
-            // Скролл недоступен — контент помещается во viewport без прокрутки
+            // Scroll is unavailable — content fits inside the viewport, nothing to scroll.
             if (_contentHeight <= ViewportSize)
             {
                 return;
@@ -211,7 +210,7 @@ namespace Shtl.Mvvm
 
         public void OnDrag(PointerEventData eventData)
         {
-            // Скролл недоступен — контент помещается во viewport без прокрутки
+            // Scroll is unavailable — content fits inside the viewport, nothing to scroll.
             if (_contentHeight <= ViewportSize)
             {
                 return;
@@ -227,9 +226,9 @@ namespace Shtl.Mvvm
                 delta = RubberDelta(delta, ViewportSize);
             }
 
-            // Сдвиг scrollPosition противоположен направлению drag (scrollbar-drag convention),
-            // одинаково для обеих осей: drag в положительную сторону локальной координаты viewport
-            // уменьшает scrollPosition (контент визуально сдвигается за пальцем).
+            // The scrollPosition shift is opposite to the drag direction (scrollbar-drag convention),
+            // identical for both axes: dragging towards the positive local viewport coordinate
+            // decreases scrollPosition (content visually moves with the finger).
             _scrollPosition -= delta;
             _velocity = -delta / Time.unscaledDeltaTime;
 
@@ -243,7 +242,7 @@ namespace Shtl.Mvvm
 
         public void OnScroll(PointerEventData eventData)
         {
-            // Скролл недоступен — контент помещается во viewport без прокрутки
+            // Scroll is unavailable — content fits inside the viewport, nothing to scroll.
             if (_contentHeight <= ViewportSize)
             {
                 return;
@@ -256,8 +255,8 @@ namespace Shtl.Mvvm
             }
             else
             {
-                // Поведение Unity ScrollRect: для горизонтального режима использовать .x,
-                // а если .x == 0 (стандартное колесо мыши без shift) — fallback на .y.
+                // Unity ScrollRect behaviour: in horizontal mode use .x, and if .x == 0
+                // (standard mouse wheel without shift) fall back to .y.
                 rawDelta = eventData.scrollDelta.x != 0f
                     ? eventData.scrollDelta.x
                     : eventData.scrollDelta.y;
@@ -267,12 +266,12 @@ namespace Shtl.Mvvm
             var newPosition = _scrollPosition - delta;
             var maxScroll = MaxScrollPosition();
 
-            // VLIST-03: wheel/touchpad на границе должен давать тот же визуальный отклик,
-            // что и drag пальцем — асимптотическое сжатие через RubberDelta для over-bound
-            // части в Elastic, hard-clamp в Clamped, без ограничений в Unrestricted.
-            // Velocity безусловно зануляется (judder-fix invariant): wheel не накапливает
-            // инерцию между событиями, LateUpdate elastic-ветка стартует SmoothDamp
-            // от velocity=0 каждый раз — чистый spring-back без carryover.
+            // VLIST-03: wheel/touchpad at the boundary must give the same visual response as a
+            // finger drag — asymptotic compression through RubberDelta for the over-bound part
+            // in Elastic, hard-clamp in Clamped, no constraints in Unrestricted.
+            // Velocity is unconditionally zeroed (judder-fix invariant): wheel does not accumulate
+            // inertia between events; the LateUpdate elastic branch starts SmoothDamp from
+            // velocity=0 every time — a clean spring-back without carryover.
             switch (_movementType)
             {
                 case MovementType.Elastic:
@@ -301,9 +300,9 @@ namespace Shtl.Mvvm
             }
 
             _velocity = 0f;
-            // VLIST-03: маркируем активный wheel-input. LateUpdate elastic-ветка
-            // увидит этот timestamp и пропустит SmoothDamp pull-back пока ввод
-            // продолжается (см. WheelActiveDuration). Симметрия с _isDragging guard.
+            // VLIST-03: mark wheel-input as active. The LateUpdate elastic branch sees this
+            // timestamp and skips SmoothDamp pull-back while input continues (see
+            // WheelActiveDuration). Mirrors the _isDragging guard.
             _lastWheelTime = Time.unscaledTime;
 
             OnScrollPositionChanged();
@@ -316,10 +315,10 @@ namespace Shtl.Mvvm
                 return;
             }
 
-            // Unrestricted-mode при контенте, помещающемся во viewport, не имеет естественного
-            // возврата (ClampScrollPosition не клампит для Unrestricted, drag заблокирован
-            // guard'ом в OnBeginDrag). Без этой проверки остаточная velocity будет уплывать
-            // _scrollPosition бесконечно — см. WR-04.
+            // Unrestricted-mode with content that fits inside the viewport has no natural return
+            // (ClampScrollPosition does nothing for Unrestricted, drag is blocked by the guard
+            // in OnBeginDrag). Without this check residual velocity would drift _scrollPosition
+            // forever — see WR-04.
             if (_movementType == MovementType.Unrestricted && _contentHeight <= ViewportSize)
             {
                 _velocity = 0f;
@@ -327,9 +326,9 @@ namespace Shtl.Mvvm
             }
 
             var offset = CalculateOffset();
-            // Прерываем цикл только если нет ни значимой инерции, ни offset для Elastic-возврата.
-            // SmoothDamp не гарантирует точного обнуления velocity (численный интегратор),
-            // поэтому сравниваем по порогу VelocityStopThreshold, а не на точное равенство 0f.
+            // Break the loop only when there is no meaningful inertia and no offset for Elastic
+            // return. SmoothDamp does not guarantee exact velocity zero (numerical integrator),
+            // so compare against VelocityStopThreshold instead of strict equality with 0f.
             if (Mathf.Abs(_velocity) < VelocityStopThreshold && offset == 0f)
             {
                 _velocity = 0f;
@@ -338,12 +337,12 @@ namespace Shtl.Mvvm
 
             if (offset != 0f && _movementType == MovementType.Elastic)
             {
-                // VLIST-03: пока wheel-ввод «активен» (последнее событие < WheelActiveDuration
-                // назад), пропускаем SmoothDamp pull-back. Иначе SmoothDamp каждый кадр
-                // тянет позицию обратно к границе, а следующий OnScroll re-rubber-сжимает
-                // overshoot на уже-возвращённой позиции → judder. Velocity нужно явно
-                // обнулить, чтобы при выходе из окна активности SmoothDamp стартовал
-                // с чистого нуля (rubber-release feel как у drag).
+                // VLIST-03: while wheel-input is "active" (last event less than
+                // WheelActiveDuration ago), skip SmoothDamp pull-back. Otherwise SmoothDamp
+                // yanks the position back towards the boundary every frame while the next
+                // OnScroll re-rubber-compresses the overshoot on the already-returned position
+                // → judder. Velocity must be explicitly zeroed so that when the active window
+                // ends SmoothDamp starts from a clean zero (rubber-release feel as in drag).
                 if (Time.unscaledTime - _lastWheelTime < WheelActiveDuration)
                 {
                     _velocity = 0f;
@@ -454,9 +453,9 @@ namespace Shtl.Mvvm
             var maxScroll = MaxScrollPosition();
             _updatingScrollbar = true;
             _scrollbar.size = viewportSize / _contentHeight;
-            // Для Elastic/Unrestricted _scrollPosition может выходить за [0, maxScroll]
-            // (overshoot во время отскока). Кламним только для нормализации scrollbar,
-            // чтобы индикатор не уходил за границы и не "застревал" во время Elastic-возврата.
+            // For Elastic/Unrestricted _scrollPosition may go outside [0, maxScroll] (overshoot
+            // during bounce). Clamp only for scrollbar normalization, so the indicator does not
+            // wander beyond bounds or "stick" during Elastic return.
             var clamped = Mathf.Clamp(_scrollPosition, 0f, maxScroll);
             var normalized = maxScroll > 0f ? clamped / maxScroll : 0f;
             _scrollbar.value = IsScrollbarInverted() ? 1f - normalized : normalized;
@@ -471,8 +470,8 @@ namespace Shtl.Mvvm
                 return false;
             }
 
-            // value=0 у BottomToTop означает низ, у RightToLeft — правую сторону;
-            // _scrollPosition=0 = начало контента, поэтому требуется инверсия.
+            // value=0 in BottomToTop means the bottom, in RightToLeft means the right side;
+            // _scrollPosition=0 corresponds to the start of the content, so inversion is required.
             return _scrollbar.direction == Scrollbar.Direction.BottomToTop
                    || _scrollbar.direction == Scrollbar.Direction.RightToLeft;
         }

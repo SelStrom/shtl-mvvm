@@ -96,8 +96,8 @@ namespace Shtl.Mvvm.Tests
 
             list.Dispose();
 
-            // После Dispose внутренние ReactiveValue должны быть сброшены
-            // Повторный Connect не должен бросать исключение (Unbind был вызван)
+            // After Dispose the internal ReactiveValues must be reset.
+            // A second Connect must not throw (Unbind was called).
             Assert.DoesNotThrow(() => list.ScrollPosition.Connect(_ => { }));
             Assert.DoesNotThrow(() => list.FirstVisibleIndex.Connect(_ => { }));
             Assert.DoesNotThrow(() => list.VisibleCount.Connect(_ => { }));
@@ -114,7 +114,7 @@ namespace Shtl.Mvvm.Tests
 
             list.Unbind();
 
-            // После Unbind повторный Connect не должен бросать исключение
+            // After Unbind a second Connect must not throw.
             Assert.DoesNotThrow(() => list.ScrollPosition.Connect(_ => { }));
             Assert.DoesNotThrow(() => list.FirstVisibleIndex.Connect(_ => { }));
             Assert.DoesNotThrow(() => list.VisibleCount.Connect(_ => { }));

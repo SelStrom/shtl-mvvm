@@ -24,11 +24,11 @@ namespace Shtl.Mvvm
         private float _fixedHeight;
         private float _spacing;
 
-        // Семантика prefix sum:
-        //   _prefixHeights[i] = offset элемента i = sum_(k<i)(s_k) + i * _spacing
-        //   _prefixHeights[i+1] - _prefixHeights[i] = s_i + _spacing (один stride, элемент + зазор после).
-        //   TotalHeight исключает trailing spacing после последнего элемента: prefix[N] - _spacing.
-        // При _spacing=0f индукция вырождается в классический prefix sum по размерам.
+        // Prefix sum semantics:
+        //   _prefixHeights[i] = offset of item i = sum_(k<i)(s_k) + i * _spacing
+        //   _prefixHeights[i+1] - _prefixHeights[i] = s_i + _spacing (one stride, item + trailing gap).
+        //   TotalHeight excludes trailing spacing after the last item: prefix[N] - _spacing.
+        // With _spacing=0f the recurrence degenerates into a classic prefix sum over sizes.
 
         public float TotalHeight
         {
@@ -99,8 +99,8 @@ namespace Shtl.Mvvm
 
             EnsureCapacity(newItemCount);
 
-            // Пересчитываем prefix sum начиная с index. prefix[index] остаётся корректным
-            // (offset элемента index не зависит от элементов справа).
+            // Recompute prefix sum starting from index. prefix[index] stays valid
+            // (the offset of item index does not depend on items to its right).
             for (var i = index; i < newItemCount; i++)
             {
                 _prefixHeights[i + 1] = _prefixHeights[i] + heightProvider(i) + _spacing;
@@ -112,15 +112,15 @@ namespace Shtl.Mvvm
             _itemCount = newItemCount;
             _fixedHeight = 0f;
 
-            // Пересчитываем prefix sum начиная с index (см. комментарий в InsertAt).
+            // Recompute prefix sum starting from index (see InsertAt comment for rationale).
             for (var i = index; i < newItemCount; i++)
             {
                 _prefixHeights[i + 1] = _prefixHeights[i] + heightProvider(i) + _spacing;
             }
         }
 
-        // Инкрементальный пересчёт хвоста prefix-sum при изменении высоты элемента index
-        // (например, при Replace). Префикс [0..index] остаётся валидным и не пересчитывается.
+        // Incrementally recomputes the prefix-sum tail when the height of item index changes
+        // (e.g. on Replace). The prefix [0..index] stays valid and is not recomputed.
         public void UpdateAt(int index, int itemCount, Func<int, float> heightProvider)
         {
             _itemCount = itemCount;
@@ -158,7 +158,7 @@ namespace Shtl.Mvvm
                 return _fixedHeight;
             }
 
-            // prefix[i+1] - prefix[i] = s_i + spacing, поэтому raw-размер = разность минус spacing.
+            // prefix[i+1] - prefix[i] = s_i + spacing, so the raw size is the difference minus spacing.
             return _prefixHeights[index + 1] - _prefixHeights[index] - _spacing;
         }
 
@@ -187,8 +187,8 @@ namespace Shtl.Mvvm
 
             if (_fixedHeight > 0f)
             {
-                // O(1) fast path для фиксированной высоты со spacing.
-                // Stride = fixedHeight + spacing; при spacing=0 поведение идентично базовому.
+                // O(1) fast path for fixed height with spacing.
+                // Stride = fixedHeight + spacing; with spacing=0 behaviour is identical to the base case.
                 var stride = _fixedHeight + _spacing;
                 if (stride <= 0f)
                 {
@@ -200,8 +200,8 @@ namespace Shtl.Mvvm
                     firstVisible = (int)(scrollPosition / stride);
                     var endPos = scrollPosition + viewportHeight;
                     lastVisible = (int)(endPos / stride);
-                    // Симметрично binary-search ветке: если элемент начинается ровно на нижней
-                    // границе viewport (endPos), он не виден -- сдвигаем на -1.
+                    // Mirroring the binary-search branch: if an item starts exactly on the lower
+                    // viewport edge (endPos), it is not visible -- shift by -1.
                     if (lastVisible * stride >= endPos)
                     {
                         lastVisible--;
@@ -210,13 +210,13 @@ namespace Shtl.Mvvm
             }
             else
             {
-                // Binary search для первого видимого элемента
+                // Binary search for the first visible item.
                 firstVisible = BinarySearchFirstVisible(scrollPosition);
 
-                // Binary search для последнего видимого элемента.
-                // BinarySearchFirstVisible возвращает первый индекс, чей prefix[i+1] > endPos,
-                // т.е. элемент, выходящий за нижнюю границу. Если же prefix[i] == endPos,
-                // элемент i начинается ровно на границе и не виден -- сдвигаем на -1.
+                // Binary search for the last visible item.
+                // BinarySearchFirstVisible returns the first index whose prefix[i+1] > endPos,
+                // i.e. the item that crosses the lower edge. If prefix[i] == endPos, however,
+                // item i starts exactly on the boundary and is not visible -- shift by -1.
                 var endPos = scrollPosition + viewportHeight;
                 var lastBoundary = BinarySearchFirstVisible(endPos);
                 if (lastBoundary < _itemCount && _prefixHeights[lastBoundary] >= endPos)
@@ -229,7 +229,7 @@ namespace Shtl.Mvvm
                 }
             }
 
-            // Clamp к границам
+            // Clamp to bounds.
             if (firstVisible >= _itemCount)
             {
                 firstVisible = _itemCount - 1;
@@ -240,11 +240,11 @@ namespace Shtl.Mvvm
                 lastVisible = _itemCount - 1;
             }
 
-            // Применяем overscan
+            // Apply overscan.
             firstVisible -= overscanCount;
             lastVisible += overscanCount;
 
-            // Clamp после overscan
+            // Clamp again after overscan.
             if (firstVisible < 0)
             {
                 firstVisible = 0;
@@ -286,7 +286,7 @@ namespace Shtl.Mvvm
             var requiredLength = itemCount + 1;
             if (_prefixHeights == null || _prefixHeights.Length < requiredLength)
             {
-                // Аллоцируем с запасом для уменьшения количества ресайзов
+                // Allocate with headroom to reduce the number of resizes.
                 var newCapacity = Math.Max(requiredLength, (_prefixHeights?.Length ?? 0) * 2);
                 if (newCapacity < 16)
                 {

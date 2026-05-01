@@ -117,7 +117,7 @@ namespace Shtl.Mvvm.Tests
 
             _root = new GameObject("TestRoot");
 
-            // VirtualScrollRect требует RectTransform для viewport
+            // VirtualScrollRect requires a RectTransform for the viewport.
             var viewportGo = new GameObject("Viewport");
             var viewportRt = viewportGo.AddComponent<RectTransform>();
             viewportRt.SetParent(_root.transform);
@@ -127,13 +127,13 @@ namespace Shtl.Mvvm.Tests
             scrollGo.transform.SetParent(_root.transform);
             _scrollRect = scrollGo.AddComponent<VirtualScrollRect>();
 
-            // Используем рефлексию для установки _viewport, т.к. поле SerializeField
+            // Use reflection to set _viewport since it is a SerializeField.
             var viewportField = typeof(VirtualScrollRect).GetField(
                 "_viewport",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             viewportField.SetValue(_scrollRect, viewportRt);
 
-            // Аналогично для _axis -- SerializeField, не имеет публичного сеттера
+            // Same for _axis -- SerializeField with no public setter.
             var axisField = typeof(VirtualScrollRect).GetField(
                 "_axis",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -155,7 +155,7 @@ namespace Shtl.Mvvm.Tests
                 .Connect(_vmList, _factory, _scrollRect);
             binding.Activate();
 
-            // После Activate добавление элемента должно вызвать создание View
+            // After Activate, adding an element must trigger View creation.
             _vmList.Add(new TestViewModel());
 
             Assert.AreEqual(1, _factory.CreateCount);
@@ -166,7 +166,7 @@ namespace Shtl.Mvvm.Tests
         [Test]
         public void OnContentChanged_RebuildLayoutAndCreatesViews()
         {
-            // Добавляем элементы ДО подключения -- при Activate сработает OnContentChanged
+            // Add elements BEFORE Activate -- OnContentChanged will fire during Activate.
             for (var i = 0; i < 5; i++)
             {
                 _vmList.Items.Add(new TestViewModel());
@@ -176,8 +176,8 @@ namespace Shtl.Mvvm.Tests
                 .Connect(_vmList, _factory, _scrollRect);
             binding.Activate();
 
-            // Viewport 300f, item height 100f -> видимо 3 элемента + overscan
-            // Должно быть создано не менее 3 Views
+            // Viewport 300f, item height 100f -> 3 visible elements + overscan.
+            // At least 3 Views must be created.
             Assert.GreaterOrEqual(_factory.CreateCount, 3);
 
             binding.Dispose();
@@ -205,14 +205,14 @@ namespace Shtl.Mvvm.Tests
                 .Connect(_vmList, _factory, _scrollRect);
             binding.Activate();
 
-            // Viewport 300f, item height 100f, overscan 2 -> видимо до ~5 элементов
-            // Добавляем 10 элементов -- последние должны быть за пределами viewport
+            // Viewport 300f, item height 100f, overscan 2 -> up to ~5 visible elements.
+            // Add 10 elements -- the last ones should fall outside the viewport.
             for (var i = 0; i < 10; i++)
             {
                 _vmList.Add(new TestViewModel());
             }
 
-            // Не все 10 должны иметь View (некоторые за пределами viewport)
+            // Not all 10 should have a View (some lie outside the viewport).
             Assert.Less(_factory.CreateCount, 10);
 
             binding.Dispose();
@@ -233,8 +233,8 @@ namespace Shtl.Mvvm.Tests
 
             _vmList.RemoveAt(0);
 
-            // После удаления элемента из видимого диапазона View должен быть освобождён
-            // и оставшийся элемент всё ещё виден
+            // After removing an element from the visible range its View must be released
+            // and the remaining element must still be visible.
             Assert.AreEqual(createCountBefore, _factory.CreateCount);
 
             binding.Dispose();
@@ -255,7 +255,7 @@ namespace Shtl.Mvvm.Tests
 
             _vmList.Items[0] = replacement;
 
-            // View должен быть переподключён, но не создан новый
+            // The View should be reconnected, not freshly created.
             Assert.AreEqual(1, _factory.CreateCount);
 
             binding.Dispose();
@@ -268,7 +268,7 @@ namespace Shtl.Mvvm.Tests
                 .Connect(_vmList, _factory, _scrollRect);
             binding.Activate();
 
-            // Добавляем 10 элементов (total height = 1000f)
+            // Add 10 elements (total height = 1000f).
             for (var i = 0; i < 10; i++)
             {
                 _vmList.Add(new TestViewModel());
@@ -276,11 +276,11 @@ namespace Shtl.Mvvm.Tests
 
             var createCountBefore = _factory.CreateCount;
 
-            // Скроллим в конец
+            // Scroll to the end.
             _scrollRect.ScrollPosition = 700f;
 
-            // Должны были создаться новые View для элементов, ставших видимыми
-            // Общее количество фабричных вызовов должно увеличиться
+            // New Views should be created for elements that became visible.
+            // Total factory calls must grow.
             Assert.GreaterOrEqual(_factory.CreateCount, createCountBefore);
 
             binding.Dispose();
@@ -300,7 +300,7 @@ namespace Shtl.Mvvm.Tests
 
             binding.Dispose();
 
-            // После Dispose фабрика должна получить RemoveWidget вызовы
+            // After Dispose the factory must receive RemoveWidget calls.
             Assert.GreaterOrEqual(_factory.RemoveCount, 0);
         }
 
@@ -311,7 +311,7 @@ namespace Shtl.Mvvm.Tests
                 .Connect(_vmList, _factory, _scrollRect);
             binding.Activate();
 
-            // Добавляем 10 элементов и скроллим
+            // Add 10 elements and scroll.
             for (var i = 0; i < 10; i++)
             {
                 _vmList.Add(new TestViewModel());
@@ -320,10 +320,10 @@ namespace Shtl.Mvvm.Tests
             _scrollRect.ScrollPosition = 500f;
             var scrollBefore = _scrollRect.ScrollPosition;
 
-            // Добавляем элемент через Items.Insert в начало (index 0, выше viewport)
+            // Insert an element via Items.Insert at the head (index 0, above the viewport).
             _vmList.Items.Insert(0, new TestViewModel());
 
-            // Scroll position должна увеличиться на высоту добавленного элемента (100f)
+            // ScrollPosition must grow by the inserted element's height (100f).
             Assert.AreEqual(scrollBefore + 100f, _scrollRect.ScrollPosition, 1f);
 
             binding.Dispose();
@@ -336,7 +336,7 @@ namespace Shtl.Mvvm.Tests
                 .Connect(_vmList, _factory, _scrollRect);
             binding.Activate();
 
-            // Добавляем 10 элементов и скроллим
+            // Add 10 elements and scroll.
             for (var i = 0; i < 10; i++)
             {
                 _vmList.Add(new TestViewModel());
@@ -345,10 +345,10 @@ namespace Shtl.Mvvm.Tests
             _scrollRect.ScrollPosition = 500f;
             var scrollBefore = _scrollRect.ScrollPosition;
 
-            // Удаляем элемент с начала (index 0, выше viewport)
+            // Remove an element from the head (index 0, above the viewport).
             _vmList.RemoveAt(0);
 
-            // Scroll position должна уменьшиться на высоту удалённого элемента (100f)
+            // ScrollPosition must shrink by the removed element's height (100f).
             Assert.AreEqual(scrollBefore - 100f, _scrollRect.ScrollPosition, 1f);
 
             binding.Dispose();
@@ -357,11 +357,11 @@ namespace Shtl.Mvvm.Tests
         [Test]
         public void OnContentChanged_HorizontalAxis_RebuildLayoutAndCreatesViews()
         {
-            // Горизонтальная ось: ширина viewport = 300, элементы по 100 -> видимо 3 + overscan
+            // Horizontal axis: viewport width = 300, items 100 wide -> 3 visible + overscan.
             ConfigureScrollRect(ScrollAxis.Horizontal, new Vector2(300f, 400f));
             _vmList = new ReactiveVirtualList<TestViewModel>(100f);
 
-            // Добавляем элементы ДО подключения -- при Activate сработает OnContentChanged
+            // Add elements BEFORE Activate -- OnContentChanged will fire during Activate.
             for (var i = 0; i < 5; i++)
             {
                 _vmList.Items.Add(new TestViewModel());
@@ -371,7 +371,7 @@ namespace Shtl.Mvvm.Tests
                 .Connect(_vmList, _factory, _scrollRect);
             binding.Activate();
 
-            // Должно быть создано не менее 3 Views
+            // At least 3 Views must be created.
             Assert.GreaterOrEqual(_factory.CreateCount, 3);
 
             binding.Dispose();
@@ -387,7 +387,7 @@ namespace Shtl.Mvvm.Tests
                 .Connect(_vmList, _factory, _scrollRect);
             binding.Activate();
 
-            // Добавляем 10 элементов (общая ширина = 1000f)
+            // Add 10 elements (total width = 1000f).
             for (var i = 0; i < 10; i++)
             {
                 _vmList.Add(new TestViewModel());
@@ -395,10 +395,10 @@ namespace Shtl.Mvvm.Tests
 
             var createCountBefore = _factory.CreateCount;
 
-            // Скроллим в конец по горизонтали
+            // Scroll to the horizontal end.
             _scrollRect.ScrollPosition = 700f;
 
-            // Должны были создаться новые View для элементов, ставших видимыми
+            // New Views must be created for elements that became visible.
             Assert.GreaterOrEqual(_factory.CreateCount, createCountBefore);
 
             binding.Dispose();
@@ -419,7 +419,7 @@ namespace Shtl.Mvvm.Tests
                 .Connect(_vmList, _factory, _scrollRect);
             binding.Activate();
 
-            // При ScrollPosition = 0 первый видимый индекс = 0
+            // At ScrollPosition = 0 the first visible index is 0.
             Assert.AreEqual(0, _vmList.FirstVisibleIndex.Value);
 
             binding.Dispose();
@@ -428,13 +428,13 @@ namespace Shtl.Mvvm.Tests
         [Test]
         public void OnContentChanged_WithSpacing_RebuildLayoutAndCreatesViews()
         {
-            // Установить _spacing через рефлексию (поле SerializeField, нет публичного сеттера)
+            // Set _spacing via reflection (SerializeField, no public setter).
             var spacingField = typeof(VirtualScrollRect).GetField(
                 "_spacing",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             spacingField.SetValue(_scrollRect, 20f);
 
-            // Добавляем элементы ДО подключения -- при Activate сработает OnContentChanged
+            // Add elements BEFORE Activate -- OnContentChanged will fire during Activate.
             for (var i = 0; i < 5; i++)
             {
                 _vmList.Items.Add(new TestViewModel());
@@ -444,8 +444,8 @@ namespace Shtl.Mvvm.Tests
                 .Connect(_vmList, _factory, _scrollRect);
             binding.Activate();
 
-            // Viewport 300f, item 100f, spacing 20f -> stride 120f -> видимо 2-3 полных + overscan.
-            // Минимум 2 view должно создаться -- smoke-проверка что spacing не ломает биндинг.
+            // Viewport 300f, item 100f, spacing 20f -> stride 120f -> 2-3 full visible + overscan.
+            // At least 2 views must be created -- smoke check that spacing does not break the binding.
             Assert.GreaterOrEqual(_factory.CreateCount, 2);
 
             binding.Dispose();
@@ -454,8 +454,8 @@ namespace Shtl.Mvvm.Tests
         [Test]
         public void Dispose_DoesNotDoubleDisposeView()
         {
-            // B-3 regression: Release сам делает view.Dispose(), поэтому если в Dispose биндинга
-            // остался явный kvp.Value.Dispose() ДО Release, OnDisposed() будет вызван дважды.
+            // B-3 regression: Release itself calls view.Dispose(), so if the binding's Dispose still
+            // had an explicit kvp.Value.Dispose() BEFORE Release, OnDisposed() would fire twice.
             var countingFactory = new CountingFactory(_root.transform);
             var vmList = new ReactiveVirtualList<TestViewModel>(100f);
 
@@ -471,22 +471,23 @@ namespace Shtl.Mvvm.Tests
 
             binding.Dispose();
 
-            // Каждый view должен получить ровно один OnDisposed (из Release внутри Dispose биндинга).
-            // Сообщение об ошибке не обращается к view.name/view.gameObject -- к моменту проверки
-            // GameObject уже уничтожен через DisposeAll → RemoveWidget → DestroyImmediate, и
-            // любой Unity API на view бросит MissingReferenceException, маскируя реальную причину.
+            // Every view must receive exactly one OnDisposed (from Release inside the binding's
+            // Dispose). The assertion message must not touch view.name/view.gameObject -- by the
+            // time it runs, the GameObject is already destroyed via DisposeAll → RemoveWidget →
+            // DestroyImmediate, and any Unity API on view would throw MissingReferenceException
+            // and mask the real cause.
             for (var i = 0; i < createdViews.Length; i++)
             {
                 Assert.AreEqual(1, createdViews[i].OnDisposedCallCount,
-                    $"View [{i}] получил OnDisposed {createdViews[i].OnDisposedCallCount} раз вместо 1");
+                    $"View [{i}] received OnDisposed {createdViews[i].OnDisposedCallCount} times instead of 1");
             }
         }
 
         [Test]
         public void Dispose_UnbindsItemsList()
         {
-            // B-4 regression: Dispose должен вызвать Items.Unbind() ДО обнуления _vmList,
-            // иначе повторный Items.Connect() бросит InvalidOperationException("Already bound").
+            // B-4 regression: Dispose must call Items.Unbind() BEFORE nulling _vmList,
+            // otherwise a subsequent Items.Connect() would throw InvalidOperationException("Already bound").
             var binding = VirtualCollectionBinding<TestViewModel, TestWidgetView>.GetOrCreate()
                 .Connect(_vmList, _factory, _scrollRect);
             binding.Activate();
@@ -495,7 +496,7 @@ namespace Shtl.Mvvm.Tests
 
             binding.Dispose();
 
-            // После Dispose Items должен быть Unbind'нут -- повторный Connect не бросает.
+            // After Dispose, Items must be Unbound -- a second Connect must not throw.
             Assert.DoesNotThrow(() =>
             {
                 _vmList.Items.Connect(
@@ -506,16 +507,16 @@ namespace Shtl.Mvvm.Tests
                 );
             });
 
-            // Cleanup: вернуть Items в unbound-состояние, чтобы не аффектить TearDown.
+            // Cleanup: return Items to the unbound state so TearDown is not affected.
             _vmList.Items.Unbind();
         }
 
         [Test]
         public void Dispose_ResetsScrollRectCallback()
         {
-            // B-5 regression: Dispose должен SetOnScrollPositionChanged(null) ДО обнуления _scrollRect,
-            // иначе ScrollPosition setter дёрнет callback с уже null'ифицированным _vmList/_layoutCalculator
-            // и кинет NullReferenceException.
+            // B-5 regression: Dispose must call SetOnScrollPositionChanged(null) BEFORE nulling
+            // _scrollRect, otherwise the ScrollPosition setter would trigger the callback with
+            // already-nulled _vmList/_layoutCalculator and throw NullReferenceException.
             var binding = VirtualCollectionBinding<TestViewModel, TestWidgetView>.GetOrCreate()
                 .Connect(_vmList, _factory, _scrollRect);
             binding.Activate();
@@ -527,16 +528,16 @@ namespace Shtl.Mvvm.Tests
 
             binding.Dispose();
 
-            // После Dispose биндинга scrollRect не должен дёргать null-биндинг.
+            // After the binding is Disposed, scrollRect must not poke a null binding.
             Assert.DoesNotThrow(() => _scrollRect.ScrollPosition = 200f);
         }
 
         [Test]
         public void OnElementAdded_FixedHeight_PreservesFixedPath()
         {
-            // B-7 regression: при последовательном Add элементов одной высоты биндинг должен
-            // оставаться в fixed-mode (LayoutCalculator._fixedHeight > 0), а не скатываться
-            // в variable-mode через InsertAt (который сбрасывает _fixedHeight в 0).
+            // B-7 regression: a sequence of Add calls with elements of the same height must keep
+            // the binding in fixed-mode (LayoutCalculator._fixedHeight > 0) and not slide into
+            // variable-mode via InsertAt (which resets _fixedHeight to 0).
             var binding = VirtualCollectionBinding<TestViewModel, TestWidgetView>.GetOrCreate()
                 .Connect(_vmList, _factory, _scrollRect);
             binding.Activate();
@@ -548,7 +549,7 @@ namespace Shtl.Mvvm.Tests
                 _vmList.Add(new TestViewModel());
             }
 
-            // Через рефлексию вытащить _layoutCalculator из биндинга и его _fixedHeight.
+            // Pull _layoutCalculator out of the binding via reflection together with its _fixedHeight.
             var layoutField = typeof(VirtualCollectionBinding<TestViewModel, TestWidgetView>).GetField(
                 "_layoutCalculator",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -559,11 +560,11 @@ namespace Shtl.Mvvm.Tests
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var actualFixedHeight = (float)fixedHeightField.GetValue(layoutCalc);
 
-            // Если бы биндинг скатился в variable-mode через InsertAt -- _fixedHeight стало бы 0.
+            // If the binding slid into variable-mode via InsertAt, _fixedHeight would become 0.
             Assert.AreEqual(fixedHeight, actualFixedHeight, 0.001f,
-                "После Add 50 элементов одной высоты LayoutCalculator должен оставаться в fixed-mode (B-7)");
+                "After Add of 50 same-height elements LayoutCalculator must stay in fixed-mode (B-7)");
 
-            // Дополнительный sanity: TotalHeight для fixed-mode без spacing.
+            // Extra sanity check: TotalHeight for fixed-mode without spacing.
             var totalHeightProp = layoutCalc.GetType().GetProperty(
                 "TotalHeight",
                 System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);

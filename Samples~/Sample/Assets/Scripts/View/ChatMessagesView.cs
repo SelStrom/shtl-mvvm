@@ -4,16 +4,17 @@ namespace Shtl.Mvvm.Samples
 {
     public sealed class ChatMessagesViewModel : AbstractViewModel
     {
-        // W-05: исключаем footgun "field initializer + объект-инициализатор" в коде потребителя.
-        // Раньше Messages инициализировалось через field initializer (= new(80f)), а в EntryScreen
-        // переприсваивалось object initializer'ом (Messages = new(208)). AbstractViewModel
-        // в своём конструкторе рефлексией кэширует ссылку на 80f-инстанс ДО того, как object
-        // initializer перезапишет поле -- кэш разъезжается с актуальной ссылкой.
+        // W-05: avoid the "field initializer + object initializer" footgun in consumer code.
+        // Previously Messages was initialised via a field initializer (= new(80f)) and then
+        // re-assigned in EntryScreen with an object initializer (Messages = new(208)).
+        // AbstractViewModel caches the reference to the 80f-instance via reflection in its
+        // constructor BEFORE the object initializer overwrites the field — the cache then
+        // diverges from the actual reference.
         //
-        // Теперь высота передаётся явно через конструктор, чтобы потребитель не переприсваивал
-        // поле после конструирования. Парам-less ctor сохранён только для удовлетворения
-        // generic-constraint `new()` в AbstractWidgetView<TViewModel>; фактически фреймворк
-        // его не вызывает (Connect принимает уже сконструированный экземпляр).
+        // Now the height is passed explicitly through the constructor so the consumer does not
+        // re-assign the field after construction. The parameterless ctor is kept only to satisfy
+        // the `new()` generic constraint on AbstractWidgetView<TViewModel>; the framework does
+        // not actually invoke it (Connect receives an already-constructed instance).
         public ReactiveVirtualList<ChatMessageViewModel> Messages;
 
         public ChatMessagesViewModel() : this(80f) { }
