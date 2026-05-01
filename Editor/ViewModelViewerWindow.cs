@@ -161,8 +161,17 @@ namespace Shtl.Mvvm.Editor
 
         private void RebuildViewModelDisplay()
         {
+            // Only the UI tree is cleared. Drawer instances are kept alive across rebuilds
+            // so that their internal foldout-state dictionaries survive structural changes
+            // (e.g. ReactiveList Count changes, "Show unsupported fields" toggle, selector edits).
             _viewModelContainer.Clear();
-            _drawerPerViewModel.Clear();
+
+            // Drop drawers for view models that are no longer selected. Re-selecting a view model
+            // later will create a fresh drawer with collapsed foldouts, which is the intended reset.
+            foreach (var stale in _drawerPerViewModel.Keys.Where(vm => !_selectedViewModels.Contains(vm)).ToList())
+            {
+                _drawerPerViewModel.Remove(stale);
+            }
 
             if (_selectedViewModels.Count == 0)
             {
@@ -172,11 +181,17 @@ namespace Shtl.Mvvm.Editor
 
             foreach (var vm in _selectedViewModels)
             {
-                var drawer = new ViewModelDrawer(false)
+                if (!_drawerPerViewModel.TryGetValue(vm, out var drawer))
                 {
-                    ShowUnsupportedFields = _showUnsupportedFields
-                };
-                _drawerPerViewModel[vm] = drawer;
+                    drawer = new ViewModelDrawer(false);
+                    _drawerPerViewModel[vm] = drawer;
+                }
+
+                // Refresh the toggle on every rebuild so existing drawers pick up the latest value.
+                drawer.ShowUnsupportedFields = _showUnsupportedFields;
+
+                // BuildViewModelElement rebuilds the UI tree and re-reads foldout state from the
+                // drawer's _objectToFoldoutStatus, so previously expanded nodes stay expanded.
                 _viewModelContainer.Add(drawer.BuildViewModelElement(vm.GetType(), vm));
             }
         }
