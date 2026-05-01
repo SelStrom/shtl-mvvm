@@ -451,7 +451,13 @@ namespace Shtl.Mvvm
                 eventData.pressEventCamera,
                 out var localPoint
             );
-            return _axis == ScrollAxis.Vertical ? localPoint.y : localPoint.x;
+            // Vertical: invert Y so a finger moving DOWN produces a positive delta in the
+            // same direction-of-travel convention as Horizontal "finger right". Unity UI Y
+            // grows upward, while scrollPosition grows away from the start of the content
+            // (top → bottom for Vertical, left → right for Horizontal), so the local-Y sign
+            // must be flipped to keep the OnDrag math (`_scrollPosition -= delta`) symmetric
+            // across both axes and to keep _velocity sign consistent for inertia in LateUpdate.
+            return _axis == ScrollAxis.Vertical ? -localPoint.y : localPoint.x;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
