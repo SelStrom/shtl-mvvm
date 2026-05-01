@@ -4,8 +4,8 @@ milestone: v1.2
 milestone_name: milestone
 status: ready_to_plan
 stopped_at: Phase 1 context gathered
-last_updated: "2026-05-01T00:46:12.355Z"
-last_activity: 2026-05-01 -- Completed quick task 260501-rr8: ViewModelViewerWindow поддержка ReactiveVirtualList
+last_updated: "2026-05-01T21:50:00.000Z"
+last_activity: 2026-05-01 -- Completed quick task 260501-wyv: ViewModelViewerWindow foldout state preservation
 progress:
   total_phases: 2
   completed_phases: 1
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-09)
 Phase: 2
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-05-01 - Completed quick task 260501-wq7: ViewModelViewerWindow multi-select toggle
+Last activity: 2026-05-01 - Completed quick task 260501-wyv: ViewModelViewerWindow foldout state preservation
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -84,6 +84,7 @@ None yet.
 | 260430-1ar | Code-review фиксы Phase 1: B-1..B-5, B-7 в VirtualCollectionBinding + regression tests | 2026-04-30 | 4ec8fa3 | [260430-1ar-code-review-fixes-phase-1-virtual-list-b](./quick/260430-1ar-code-review-fixes-phase-1-virtual-list-b/) |
 | 260501-rr8 | В ViewModelViewerWindow добавить поддержку ReactiveVirtualList | 2026-05-01 | 3e82208 | [260501-rr8-viewmodelviewerwindow-reactivevirtuallis](./quick/260501-rr8-viewmodelviewerwindow-reactivevirtuallis/) |
 | 260501-wq7 | ViewModelViewerWindow: multi-select toggle (отображать одновременно все выбранные ViewModel) | 2026-05-01 | 0ccff1b | [260501-wq7-viewmodelviewerwindow-toggle](./quick/260501-wq7-viewmodelviewerwindow-toggle/) |
+| 260501-wyv | ViewModelViewerWindow: сохранение foldout-state при пересборке UI (смена выбора, изменения ReactiveList и т.п.) | 2026-05-01 | b836d80 | [260501-wyv-viewmodelviewerwindow-fold-foldout-state](./quick/260501-wyv-viewmodelviewerwindow-fold-foldout-state/) |
 
 ## Session Continuity
 
