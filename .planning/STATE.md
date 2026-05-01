@@ -5,7 +5,7 @@ milestone_name: milestone
 status: ready_to_plan
 stopped_at: Phase 1 context gathered
 last_updated: "2026-05-02T00:30:00.000Z"
-last_activity: 2026-05-02 -- Completed quick task 260502-05g: VirtualScrollRect — natural-scroll direction для вертикального drag
+last_activity: 2026-05-02 -- Completed quick task 260502-0nt: Sample vertical-список с произвольной высотой сообщений (random)
 progress:
   total_phases: 2
   completed_phases: 1
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-09)
 Phase: 2
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-05-02 - Completed quick task 260502-05g: VirtualScrollRect — natural-scroll direction для вертикального drag
+Last activity: 2026-05-02 - Completed quick task 260502-0nt: Sample vertical-список с произвольной высотой сообщений (random)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -86,6 +86,7 @@ None yet.
 | 260501-wq7 | ViewModelViewerWindow: multi-select toggle (отображать одновременно все выбранные ViewModel) | 2026-05-01 | 0ccff1b | [260501-wq7-viewmodelviewerwindow-toggle](./quick/260501-wq7-viewmodelviewerwindow-toggle/) |
 | 260501-wyv | ViewModelViewerWindow: сохранение foldout-state при пересборке UI (смена выбора, изменения ReactiveList и т.п.) | 2026-05-01 | b836d80 | [260501-wyv-viewmodelviewerwindow-fold-foldout-state](./quick/260501-wyv-viewmodelviewerwindow-fold-foldout-state/) |
 | 260502-05g | VirtualScrollRect: исправлено перепутанное вертикальное направление drag (natural-scroll convention) + regression-тесты | 2026-05-02 | 0965e96 | [260502-05g-drag-vertical-direction-inverted](./quick/260502-05g-drag-vertical-direction-inverted/) |
+| 260502-0nt | Sample: vertical-список с произвольной высотой сообщений (random 50..150 px) через ReactiveVirtualList Func<int, float> | 2026-05-02 | 8e9ddf7 | [260502-0nt-vertical-msg-random-height](./quick/260502-0nt-vertical-msg-random-height/) |
 
 ## Session Continuity
 
